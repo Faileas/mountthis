@@ -189,7 +189,7 @@ function MountThis:UpdateMounts(force_update)
 		-- Set up our local frame for reading
 		GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
 		MountThisTooltip:SetHyperlink("spell:"..spellID);
-		if MountThisSettings.Mounts == nil then MountThisSettings.Mounts = {} end;
+		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
 		-- We make an assumption that the tooltip isn't changing
 		-- TODO: Add override to allow reinitialization (will help if they change text)
 		if force_update or not MountThisSettings.Mounts[mount_name] then
