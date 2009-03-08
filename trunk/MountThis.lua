@@ -361,27 +361,29 @@ If you receive an error of "You can't use that here", leave the subzone and retu
 TODO: Investigate the zone error with a section of Northrend where certain fish pools are found.
 ]]--
 function MountThis:FlyableArea()
-	-- Continents 3 (Outland) and 4 (Northrend) are flyable
-	local currentZone = GetZoneText();
-	local subZone = GetSubZoneText();
-	if currentZone == "Wintergrasp" then return false end
-	if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
-	-- The Underbelly is an issue due to the sewer opening having the same subzone text as the rest
+    -- Continents 3 (Outland) and 4 (Northrend) are flyable
+    local currentZone = GetZoneText();
+    local subZone = GetSubZoneText();
+    if currentZone == "Wintergrasp" then return false end
+    if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
+    -- The Underbelly is an issue due to the sewer opening having the same subzone text as the rest
 
-	-- Move this below some of the checks to remove that 0.001 second delay when unnecessary (Hey, it's an optimization!)
-	local cold_weather_flying = MountThis:CheckSkill("Cold Weather Flying")
+    -- Move this below some of the checks to remove that 0.001 second delay when unnecessary (Hey, it's an optimization!)
+    local cold_weather_flying = MountThis:CheckSkill("Cold Weather Flying")
 
-	-- I agree that it is pretty silly to do this check constantly.  I should build a hash for easy lookup.
-	for continent_index = 3, 4 do
-		local ZoneNames = { GetMapZones(continent_index) } ;
-		for index, zoneName in pairs(ZoneNames) do
-			if zoneName == currentZone then
-				if cold_weather_flying == nil and continent_index == 4 then return false; end
-				return true;
-			end
-		end
-	end
-	return false;
+    -- This is a stupid bug.  Evidently "The Frozen Sea" is not a part of Northrend or Outland.
+    if currentZone == "The Frozen Sea" and cold_weather_flying ~= nil then return true; end
+    -- I agree that it is pretty silly to do this check constantly.  I should build a hash for easy lookup.
+    for continent_index = 3, 4 do
+	local ZoneNames = { GetMapZones(continent_index) } ;
+	for index, zoneName in pairs(ZoneNames) do
+	    if zoneName == currentZone then
+		if cold_weather_flying == nil and continent_index == 4 then return false; end
+                return true;
+            end
+        end
+    end
+    return false;
 end
 
 -- Find the fastest random mount you can use (flying first)
