@@ -11,7 +11,60 @@ local options =
 	type = 'group',
 	args =
 	{
-		General = {
+		list =
+		{
+			type = 'execute',
+			name = 'list',
+			desc = 'List all mounts known to MountThis',
+			func = function() MountThis:ListMounts(true) end,
+		},
+		update = 
+		{
+			type = 'execute',
+			name = 'Update',
+			desc = 'Force update all mounts',
+			func = function() MountThis:UpdateMounts(true) end,
+			width = 'full',
+		},
+		version =
+		{
+			type = 'execute',
+			name = 'Version',
+			desc = 'Show MountThis version',
+			order = 2,
+			func = function() MountThis:Print("You are using MountThis version "..tostring(MountThis.version)) end,
+			--hidden = guiHidden,
+			width = 'full',
+		},
+		dismountIfMounted =
+		{
+			order = 1,
+			type = 'toggle',
+			name = 'Dismount',
+			desc = 'Make MountThis dismount if used while mounted instead of attempting to remount',
+			get = function() return MountThisSettings.dismountIfMounted end,
+			set = function(info, value) MountThisSettings.dismountIfMounted = value end,
+			width = 'full',
+		},
+		options =
+		{
+			type = 'execute',
+			name = 'options',
+			desc = 'Open configuration options window',
+			func = function() InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.General) end
+		},
+		debug =
+		{
+			type = 'execute',
+			name = 'options',
+			desc = 'Open configuration options window',
+			func = function() InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.Debugging) end
+		},
+
+		-- These are the options for the Blizzard frames
+		General =
+		{
+			cmdHidden = true,
 			type = 'group',
 			name = 'General',
 			desc = 'General',
@@ -84,6 +137,7 @@ local options =
 		},
 		Debugging =
 		{
+			cmdHidden = true,
 			type = 'group',
 			name = 'Debugging',
 			desc = 'Debugging commands for MountThis',
@@ -137,8 +191,9 @@ local options =
 		}
 	}
 }
+
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = "0.6";
+MountThis.version = 0.7;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -189,14 +244,14 @@ function MountThis:COMPANION_LEARNED()
 end
 function MountThis:PLAYER_ENTERING_WORLD()
 	if MountThisVariablesLoaded then
-		MountThis:UpdateMounts();
-		if MountThisSettings.version == nil or MountThisSettings.version < MountThis.version then
+		if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) < tonumber(MountThis.version) then
 			MountThisSettings.version = MountThis.version;
 			if MountThisSettings.mountLand == nil then MountThisSettings.mountLand = MountThisSettingsDefaults.mountLand; end
-		end
-		if MountThisSettings.version == nil or MountThisSettings.version < MountThis.version then
-			MountThisSettings.version = MountThis.version;
-			if MountThisSettings.mountLandKey == nil then MountThisSettings.mountLandKey = 0; end
+			if MountThisSettings.mountLandKey == nil then MountThisSettings.mountLandKey = MountThisSettingsDefaults.mountLandKey; end
+			--MountThisSettings.debug = 0;
+			MountThis:UpdateMounts(true);
+		else
+			MountThis:UpdateMounts();
 		end
 	end
 end
@@ -208,18 +263,18 @@ function MountThis:UpdateMounts(force_update)
 	end
 
 	-- Loop through all the mounts (yes, mounts are "companions" now)
-	for i = 1, GetNumCompanions("MOUNT") do
-		local _,mount_name,spellID = GetCompanionInfo("MOUNT",i);
-		if MountThisSettings.debug >= 2 then self:Communicate("Found mount: "..mount_name.." at index "..i); end
+	for companion_index = 1, GetNumCompanions("MOUNT") do
+		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
+		if MountThisSettings.debug >= 2 then self:Communicate("Found mount: "..mount_name.." at index "..companion_index); end
 
 		-- Set up a temporary mount object
 		local current_mount =
 		{
 			name = mount_name;
-			index = i;
+			index = companion_index;
 			speed = 0;
 			flying = false;
-			require_skill = nil;
+			require_skill = "";
 			require_skill_level = 0;
 			riding_skill_based = false;
 			passengers = 0;
@@ -233,13 +288,13 @@ function MountThis:UpdateMounts(force_update)
 		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
 		-- We make an assumption that the tooltip isn't changing
 		-- TODO: Add override to allow reinitialization (will help if they change text)
-		if force_update or not type(MountThisSettings.Mounts[mount_name]) == "table" then
-			if force_update then self:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
+		if force_update or not(type(MountThisSettings.Mounts[mount_name]) == "table") then
+			if force_update and MountThisSettings.debug > 1 then self:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
 
 			local outland, northrend, ahnqiraj, extremely, very, require_skill, riding_skill_based, passengers;
 			-- Cycle through the lines of our tooltip to figure out the kind of mount
-			for i = 1, MountThisTooltip:NumLines() do
-				local text = _G["MountThisTooltipTextLeft"..i]:GetText();
+			for tt_line = 1, MountThisTooltip:NumLines() do
+				local text = _G["MountThisTooltipTextLeft"..tt_line]:GetText();
 
 				--[[--
 				Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
@@ -248,7 +303,6 @@ function MountThis:UpdateMounts(force_update)
 				for word in string.gmatch(text, "%a+") do
 					if word == "Outland" then outland = true;
 					elseif word == "Northrend" then northrend = true;
-					elseif word == "Ahn'Qiraj" then ahnqiraj = true;
 					elseif word == "extremely" then extremely = true;
 					elseif word == "very" then very = true;
 					end
@@ -257,13 +311,13 @@ function MountThis:UpdateMounts(force_update)
 				-- Profession skill seems to come in more than one form
 				local skill_level, skill_type = string.match(text, "Requires (%d+) skill in (%a+)");
 				if skill_type ~= nil then
-					current_mount.require_skill_name = skill_type;
-					current_mount.require_skill = skill_level;
+					current_mount.require_skill = skill_type;
+					current_mount.require_skill_level = skill_level;
 				end
 				skill_level, skill_type = string.match(text, "Requires (%d+) (%a+) skill");
 				if skill_type ~= nil then
-					current_mount.require_skill_name = skill_type;
-					current_mount.require_skill = skill_level;
+					current_mount.require_skill = skill_type;
+					current_mount.require_skill_level = skill_level;
 				end
 
 				-- Let's see how many passengers we can take
@@ -272,7 +326,6 @@ function MountThis:UpdateMounts(force_update)
 
 				-- Set the mount's flying ability
 				if northrend or outland then current_mount.flying = true end;
-				if string.match(text, "Ahn'Qiraj") ~= nil then current_mount.ahnqiraj = true end;
 				
 				-- Set up the speed of the mount
 				if current_mount.flying then
@@ -286,11 +339,18 @@ function MountThis:UpdateMounts(force_update)
 					else current_mount.speed = 60;
 					end
 				end
+				-- Ahn'Qiraj mounts are unique in that they do not use the normal "speed" keywords
+				if string.match(text, "Ahn'Qiraj") ~= nil then
+					current_mount.ahnqiraj = true;
+					current_mount.speed = 100;
+				end
 
 				-- Not a huge stretch anymore, but I realized earlier versions did not catch all possibilities
 				if string.match(text, "depending on your Riding skill") ~= nil then
 					current_mount.riding_skill_based = true
-					skill_level = self:CheckSkill("Riding");
+					--skill_level = MountThis:CheckSkill("Riding");
+					skill_level = MountThis:GetSkillLevel("Riding");
+					--MountThis:Communicate(tostring(skill_level));
 					if current_mount.flying then
 						-- Tell me again how you learned a flying mount but I don't see you having the skill...
 						if skill_level == nil or skill_level == 0 then current_mount.speed = 0;
@@ -315,7 +375,8 @@ function MountThis:UpdateMounts(force_update)
 			end
 
 			-- I can't say I always know what the pattern matches will return...
-			if MountThisSettings.debug >=1 and not force_update then
+			--if MountThisSettings.debug >=1 and not force_update then
+			if MountThisSettings.debug >=1 then
 				self:Communicate("Mount flags...");
 				self:Communicate("- northrend: "..tostring(northrend));
 				self:Communicate("- outland: "..tostring(outland));
@@ -328,21 +389,18 @@ function MountThis:UpdateMounts(force_update)
 				self:Communicate("- passengers: "..tostring(passengers));
 				self:Communicate("- use_mount: "..tostring(current_mount.use_mount));
 			end
-			
 			-- Most errors indicating this line are tooltip parse errors or logic errors for skill/speed
 			MountThisSettings.Mounts[mount_name] = current_mount;
 		end
-		MountThisSettings.Mounts[mount_name].index = i;
-		if MountThisSettings.debug >=2 then self:Communicate("Set the index for mount: "..mount_name.." to "..i); end
+		if MountThisSettings.debug >=2 then self:Communicate("Setting the index for mount: "..mount_name.." to "..companion_index); end
+		MountThisSettings.Mounts[mount_name].index = companion_index;
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
 	MountThisTooltip:Hide();
 end
 
-function MountThis:Communicate(str)
-	-- This function could be used to make comments when summoning if I was so inclined
-	self:Print(str);
-end
+-- This function could be used to make comments when summoning if I was so inclined
+function MountThis:Communicate(str) self:Print(str); end
 
 function MountThis:ListMounts(request_short)
 	self:Communicate("ListMounts:");
@@ -355,35 +413,36 @@ function MountThis:ListMounts(request_short)
 	end
 end
 
+
 --[[
 There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
-TODO: Investigate the zone error with a section of Northrend where certain fish pools are found.
 ]]--
-function MountThis:FlyableArea()
-    -- Continents 3 (Outland) and 4 (Northrend) are flyable
-    local currentZone = GetZoneText();
-    local subZone = GetSubZoneText();
-    if currentZone == "Wintergrasp" then return false end
-    if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
-    -- The Underbelly is an issue due to the sewer opening having the same subzone text as the rest
-
-    -- Move this below some of the checks to remove that 0.001 second delay when unnecessary (Hey, it's an optimization!)
-    local cold_weather_flying = MountThis:CheckSkill("Cold Weather Flying")
-
-    -- This is a stupid bug.  Evidently "The Frozen Sea" is not a part of Northrend or Outland.
-    if currentZone == "The Frozen Sea" and cold_weather_flying ~= nil then return true; end
-    -- I agree that it is pretty silly to do this check constantly.  I should build a hash for easy lookup.
-    for continent_index = 3, 4 do
-	local ZoneNames = { GetMapZones(continent_index) } ;
-	for index, zoneName in pairs(ZoneNames) do
-	    if zoneName == currentZone then
-		if cold_weather_flying == nil and continent_index == 4 then return false; end
-                return true;
-            end
-        end
-    end
-    return false;
+--[[
+Hopefully, this function will allow all the special cases to go away.
+This is still subject to localization problems and expansion issues
+(Who knows if they change the continent information later)
+]]--
+function MountThis:Flyable()
+	local flyable, target = SecureCmdOptionParse("[flyable] true; false");
+	-- The parser does not take into account Dalaran, Wintergrasp, or if you have Cold Weather Flying
+	if flyable == "true" then
+		-- If only we could find out what continent we are on without messing with the current map
+		local current_zone_index = GetCurrentMapZone();
+		local current_continent_index = GetCurrentMapContinent();
+		SetMapToCurrentZone();
+		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
+			SetMapZoom(current_continent_index, current_zone_index);
+			local currentZone = GetZoneText();
+			local subZone = GetSubZoneText();
+			if currentZone == "Wintergrasp" then return false end
+			if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
+			return true;
+		end
+		SetMapZoom(current_continent_index, current_zone_index);
+		return true;
+	end
+	return false;
 end
 
 -- Find the fastest random mount you can use (flying first)
@@ -393,20 +452,25 @@ function MountThis:MountRandom()
 	-- Try to summon a flying mount first, unless asked not to do so
 	summon_flying = true;
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
-        if MountThisSettings.mountLand == true then
-            if MountThisSettings.debug >= 1 then
-                MountThis:Communicate('MountLand option enabled');
-                MountThis:Communicate('MountLandKey set to '..tostring(MountThisSettings.mountLandKey));
-                MountThis:Communicate('Alt: '..tostring(IsAltKeyDown()));
-                MountThis:Communicate('Control: '..tostring(IsControlKeyDown()));
-                MountThis:Communicate('Shift: '..tostring(IsShiftKeyDown()));
-            end
-            if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false; end
-            if MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false; end
-            if MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false; end
-        end;
+    if MountThisSettings.mountLand == true then
+        if MountThisSettings.debug >= 1 then
+			MountThis:Communicate('MountLand option enabled');
+			MountThis:Communicate('MountLandKey set to '..tostring(MountThisSettings.mountLandKey));
+			MountThis:Communicate('Alt: '..tostring(IsAltKeyDown()));
+			MountThis:Communicate('Control: '..tostring(IsControlKeyDown()));
+			MountThis:Communicate('Shift: '..tostring(IsShiftKeyDown()));
+		end
+		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false; end
+		if MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false; end
+		if MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false; end
+
+		--if MountThisSettings.mountLandKey == 0 and SecureCmdOptionParse("[modifier:alt] true") == "true" then summon_flying = false; end
+		--if MountThisSettings.mountLandKey == 1 and SecureCmdOptionParse("[modifier:control] true") == "true" then summon_flying = false; end
+		--if MountThisSettings.mountLandKey == 2 and SecureCmdOptionParse("[modifier:shift] true") == "true" then summon_flying = false; end
+	end;
 	--if MountThis:FlyableArea() then
-	if MountThis:FlyableArea() and summon_flying then
+	--if MountThis:FlyableArea() and summon_flying then
+	if MountThis:Flyable() and summon_flying then
 		--self:Communicate("Take the high road...");
 		if MountThis:Mount(MountThis:Random(true,310)) then return true; end
 		if MountThis:Mount(MountThis:Random(true,280)) then return true; end
@@ -421,7 +485,7 @@ end
 
 -- Give a mount ID and I'll use it, otherwise, it's a random mount
 function MountThis:Mount(companionID)
-	if IsMounted() then
+	if IsMounted() or CanExitVehicle() then
 		if MountThisSettings.debug >=1 then self:Communicate("Already mounted"); end
 		-- TODO: Fix this! It should be initialized on startup
 		if MountThisSettings.dismountIfMounted == nil then MountThisSettings.dismountIfMounted = false; end
@@ -534,6 +598,13 @@ end
 
 -- Return the value of a specific skill, nil if you don't have it
 function MountThis:CheckSkill(check_skill_name)
+	local spellName = GetSpellInfo(check_skill_name);
+	--self:Communicate(spellName);
+	if spellName ~= nil then return true end
+	if MountThisSettings.debug > 1 then self:Communicate("Skill: "..check_skill_name.." - not found"); end
+	return nil;
+end
+function MountThis:GetSkillLevel(check_skill_name)
 	for skillIndex = 1, GetNumSkillLines() do
 		local skillName, _, _, skillRank = GetSkillLineInfo(skillIndex);
 		if string.lower(skillName) == string.lower(check_skill_name) then
@@ -541,10 +612,6 @@ function MountThis:CheckSkill(check_skill_name)
 			return skillRank;
 		end
 	end
-	local spellName = GetSpellInfo(check_skill_name);
-	--self:Communicate(spellName);
-	if spellName ~= nil then return true end
-	if MountThisSettings.debug > 1 then self:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
 end
 
@@ -560,4 +627,31 @@ function MountThis:ToolTipDebug(spellID)
 		MountThis:Communicate(text);
 	end
 	MountThisTooltip:Hide();
+end
+
+-- This function is being saved, but deprecated
+function MountThis:FlyableArea()
+    -- Continents 3 (Outland) and 4 (Northrend) are flyable
+    local currentZone = GetZoneText();
+    local subZone = GetSubZoneText();
+    if currentZone == "Wintergrasp" then return false end
+    if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
+    -- The Underbelly is an issue due to the sewer opening having the same subzone text as the rest
+
+    -- Move this below some of the checks to remove that 0.001 second delay when unnecessary (Hey, it's an optimization!)
+    local cold_weather_flying = MountThis:CheckSkill("Cold Weather Flying")
+
+    -- This is a stupid bug.  Evidently "The Frozen Sea" is not a part of Northrend or Outland.
+    if currentZone == "The Frozen Sea" and cold_weather_flying ~= nil then return true; end
+    -- I agree that it is pretty silly to do this check constantly.  I should build a hash for easy lookup.
+    for continent_index = 3, 4 do
+	local ZoneNames = { GetMapZones(continent_index) } ;
+	for index, zoneName in pairs(ZoneNames) do
+	    if zoneName == currentZone then
+		if cold_weather_flying == nil and continent_index == 4 then return false; end
+                return true;
+            end
+        end
+    end
+    return false;
 end
