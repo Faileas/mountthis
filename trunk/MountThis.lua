@@ -5,6 +5,9 @@ BlazzingSaddles (Alestane) authors for the help they provided in understanding
 the new functions, even if they don't know.
 --]]--
 
+BINDING_HEADER_MOUNTTHIS = "MountThis";
+BINDING_NAME_MOUNTRANDOM = "Random Mount";
+
 local options =
 {
 	name = 'MountThis',
@@ -47,6 +50,13 @@ local options =
 			width = 'full',
 		},
 		options =
+		{
+			type = 'execute',
+			name = 'options',
+			desc = 'Open configuration options window',
+			func = function() InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.General) end
+		},
+		config =
 		{
 			type = 'execute',
 			name = 'options',
@@ -193,7 +203,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.7;
+MountThis.version = 0.8;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -265,6 +275,8 @@ function MountThis:UpdateMounts(force_update)
 	-- Loop through all the mounts (yes, mounts are "companions" now)
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
+		-- For some reason, GetCompanionInfo can return a nil mount name.  This tries to stop that
+		if mount_name == nil then return end;
 		if MountThisSettings.debug >= 2 then self:Communicate("Found mount: "..mount_name.." at index "..companion_index); end
 
 		-- Set up a temporary mount object
@@ -376,7 +388,7 @@ function MountThis:UpdateMounts(force_update)
 
 			-- I can't say I always know what the pattern matches will return...
 			--if MountThisSettings.debug >=1 and not force_update then
-			if MountThisSettings.debug >=1 then
+			if MountThisSettings.debug >=2 then
 				self:Communicate("Mount flags...");
 				self:Communicate("- northrend: "..tostring(northrend));
 				self:Communicate("- outland: "..tostring(outland));
@@ -389,11 +401,27 @@ function MountThis:UpdateMounts(force_update)
 				self:Communicate("- passengers: "..tostring(passengers));
 				self:Communicate("- use_mount: "..tostring(current_mount.use_mount));
 			end
+
+			if MountThisSettings.debug >=4 then
+				self:Communicate("Current mount info..."..tostring(mount_name));
+				self:Communicate("- name: "..tostring(current_mount.name));
+				self:Communicate("- index: "..tostring(current_mount.index));
+				self:Communicate("- speed: "..tostring(current_mount.speed));
+				self:Communicate("- flying: "..tostring(current_mount.flying));
+				self:Communicate("- require_skill: "..tostring(current_mount.require_skill));
+				self:Communicate("- require_skill_level: "..tostring(current_mount.require_skill_level));
+				self:Communicate("- riding_skill_based: "..tostring(current_mount.riding_skill_based));
+				self:Communicate("- passengers: "..tostring(current_mount.passengers));
+				self:Communicate("- use_mount: "..tostring(current_mount.use_mount));
+				self:Communicate("- ahn'qiraj: "..tostring(current_mount.ahnqiraj));
+			end
+
 			-- Most errors indicating this line are tooltip parse errors or logic errors for skill/speed
 			MountThisSettings.Mounts[mount_name] = current_mount;
 		end
 		if MountThisSettings.debug >=2 then self:Communicate("Setting the index for mount: "..mount_name.." to "..companion_index); end
 		MountThisSettings.Mounts[mount_name].index = companion_index;
+		--end -- Nil mount name???
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
 	MountThisTooltip:Hide();
