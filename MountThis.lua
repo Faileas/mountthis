@@ -90,19 +90,49 @@ local options =
 					set = function(info, value) MountThisSettings.dismountIfMounted = value end,
 					width = 'full',
 				},
-				mountLand =
+				exitVehicle =
 				{
 					order = 2,
 					type = 'toggle',
+					name = 'Exit Vehicle',
+					desc = 'Make MountThis dismount if used while in a vehicle',
+					get = function() return MountThisSettings.exitVehicle end,
+					set = function(info, value) MountThisSettings.exitVehicle = value end,
+					width = 'full',
+				},
+				unShapeshift =
+				{
+					order = 3,
+					type = 'toggle',
+					name = 'Cancel Shapeshift',
+					desc = 'Make MountThis cancel a shapeshift form',
+					get = function() return MountThisSettings.unShapeshift end,
+					set = function(info, value) MountThisSettings.unShapeshift = value end,
+					width = 'full',
+				},
+				mountLand =
+				{
+					order = 4,
+					type = 'toggle',
 					name = 'Use modifier for non-flying mount in flyable zone',
-					desc = 'Press (ALT) to make MountThis use a non-flying mount when a flyable zone.\nNOTE: Currently in development.',
+					desc = 'Use a modifier to make MountThis use a non-flying mount when a flyable zone',
 					get = function() return MountThisSettings.mountLand end,
 					set = function(info, value) MountThisSettings.mountLand = value end,
 					width = 'full'
 				},
+				dontUseLastMount =
+				{
+					order = 5,
+					type = 'toggle',
+					name = 'Don\'t use last mount',
+					desc = 'MountThis will not use the last mount used',
+					get = function() return MountThisSettings.dontUseLastMount end,
+					set = function(info, value) MountThisSettings.dontUseLastMount = value end,
+					width = 'full'
+				},
 				mountLandKey =
 				{
-					order = 3,
+					order = 6,
 					type = 'select',
 					name = 'Land Mount Key',
 					desc = '',
@@ -123,7 +153,7 @@ local options =
 				},
 				mounts = 
 				{
-					order = 4,
+					order = 6,
 					type = 'multiselect',
 					name = 'Mounts',
 					desc = '',
@@ -203,7 +233,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.8;
+MountThis.version = 0.9;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -211,14 +241,18 @@ MountThisSettings =
 	version = MountThis.version,
 	Mounts = {},
 	debug = 0,
+	dontUseLastMount = false,
 	dismountIfMounted = true,
+	exitVehicle = true,
+	unShapeshift = true,
 	mountLand = true;
-        mountLandKey = 0;
+    mountLandKey = 0;
 };
 MountThisSettingsDefaults = MountThisSettings;
 MountThisVariablesLoaded = false;
+MountThis.lastMountUsed = nil;
 
---MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureAnchorButtonTemplate");
+--MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
 --MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
 --MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
 
@@ -246,23 +280,24 @@ end
 function MountThis:VARIABLES_LOADED()
 	MountThisVariablesLoaded = true;
 	if MountThisSettings.debug >=1 then self:Print("Variables loaded"); end
-	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
 end
 
 function MountThis:COMPANION_LEARNED()
-	MountThis:UpdateMounts();
+	MountThis:UpdateMounts(true);
 end
+
 function MountThis:PLAYER_ENTERING_WORLD()
+	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
 	if MountThisVariablesLoaded then
 		if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) < tonumber(MountThis.version) then
 			MountThisSettings.version = MountThis.version;
 			if MountThisSettings.mountLand == nil then MountThisSettings.mountLand = MountThisSettingsDefaults.mountLand; end
 			if MountThisSettings.mountLandKey == nil then MountThisSettings.mountLandKey = MountThisSettingsDefaults.mountLandKey; end
-			--MountThisSettings.debug = 0;
-			MountThis:UpdateMounts(true);
-		else
-			MountThis:UpdateMounts();
+			if MountThisSettings.exitVehicle == nil then MountThisSettings.exitVehicle = MountThisSettingsDefaults.exitVehicle; end
+			if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
+			if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 		end
+		MountThis:UpdateMounts(true);
 	end
 end
 
@@ -480,8 +515,8 @@ function MountThis:MountRandom()
 	-- Try to summon a flying mount first, unless asked not to do so
 	summon_flying = true;
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
-    if MountThisSettings.mountLand == true then
-        if MountThisSettings.debug >= 1 then
+	if MountThisSettings.mountLand == true then
+		if MountThisSettings.debug >= 1 then
 			MountThis:Communicate('MountLand option enabled');
 			MountThis:Communicate('MountLandKey set to '..tostring(MountThisSettings.mountLandKey));
 			MountThis:Communicate('Alt: '..tostring(IsAltKeyDown()));
@@ -491,21 +526,13 @@ function MountThis:MountRandom()
 		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false; end
 		if MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false; end
 		if MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false; end
-
-		--if MountThisSettings.mountLandKey == 0 and SecureCmdOptionParse("[modifier:alt] true") == "true" then summon_flying = false; end
-		--if MountThisSettings.mountLandKey == 1 and SecureCmdOptionParse("[modifier:control] true") == "true" then summon_flying = false; end
-		--if MountThisSettings.mountLandKey == 2 and SecureCmdOptionParse("[modifier:shift] true") == "true" then summon_flying = false; end
 	end;
-	--if MountThis:FlyableArea() then
-	--if MountThis:FlyableArea() and summon_flying then
 	if MountThis:Flyable() and summon_flying then
-		--self:Communicate("Take the high road...");
 		if MountThis:Mount(MountThis:Random(true,310)) then return true; end
 		if MountThis:Mount(MountThis:Random(true,280)) then return true; end
 		-- Check to see if you're a fast druid (this should work if you're moving)
 		if MountThis:Mount(MountThis:Random(true,60)) then return true; end
 	end
-	--self:Communicate("You can't fly here. Travelling by land...");
 	if MountThis:Mount(MountThis:Random(false,100)) then return true; end
 	if MountThis:Mount(MountThis:Random(false,60)) then return true; end
 	return false;
@@ -513,23 +540,27 @@ end
 
 -- Give a mount ID and I'll use it, otherwise, it's a random mount
 function MountThis:Mount(companionID)
-	if IsMounted() or CanExitVehicle() then
-		if MountThisSettings.debug >=1 then self:Communicate("Already mounted"); end
-		-- TODO: Fix this! It should be initialized on startup
-		if MountThisSettings.dismountIfMounted == nil then MountThisSettings.dismountIfMounted = false; end
-		if MountThisSettings.dismountIfMounted then
-			if MountThisSettings.debug >=1 then self:Communicate("Dismounting only"); end
-			return MountThis:Dismount();
-		end
-	end
-	
+	if MountThisSettings.debug >= 4 then MountThis:Communicate(tostring(companionID)); end
+
+	if IsMounted() then if MountThisSettings.dismountIfMounted then return MountThis:Dismount(); end end
+	if CanExitVehicle() then if MountThisSettings.exitVehicle then return MountThis:Dismount(); end end
+	if GetShapeshiftForm() == 0 then if MountThisSettings.unShapeshift then MountThis:Dismount(); end end
+
+	--if IsMounted() or CanExitVehicle() then
+	--	if MountThisSettings.debug >=1 then self:Communicate("Already mounted"); end
+	--	-- TODO: Fix this! It should be initialized on startup
+	--	if MountThisSettings.dismountIfMounted == nil then MountThisSettings.dismountIfMounted = false; end
+	--	if MountThisSettings.dismountIfMounted then
+	--		if MountThisSettings.debug >=1 then self:Communicate("Dismounting only"); end
+	--		return MountThis:Dismount();
+	--	end
+	--end
+
 	if companionID ~= nil then
 		CallCompanion(MOUNT, companionID);
+		MountThis.lastMountUsed = companionID;
 		return true;
 	end
-        
-	-- DON'T DO THIS UNLESS YOU CHANGE MountRandom(). Stack overflow if no appropriate mount found
-	--else return self:MountRandom(); end
 	return false;
 end
 
@@ -540,6 +571,7 @@ function MountThis:Dismount()
 	-- If you're in a vehicle, leave the vehicle instead
 	if IsUsingVehicleControls() then VehicleExit() end;
 	if CanExitVehicle() then VehicleExit() end;
+	
 	-- Dismount evidently doesn't return true if you dismount
 	Dismount();
 	return true;
@@ -614,14 +646,44 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
             end
         end
     end
-	
+
     -- If we don't have any possible mounts, the result is nil
     -- Hopefully anyone asking for a mount knows for what they're asking
     if #possible_mounts == 0 then
         if MountThisSettings.debug > 1 then self:Communicate("Your random mount query failed"); end
         return nil;
     end
-    return possible_mounts[random(#possible_mounts)];
+
+--[[DEBUGGING CODE]]--
+
+--MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
+--MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
+--MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
+
+--local shapeshift_form = "Path of Frost";
+--if random(1) > 0 then shapeshift_form = "Horn of Winter"; end
+--
+--MountThisSecureButton:SetAttribute('type', 'spell');
+--MountThisSecureButton:SetAttribute('spell', shapeshift_form);
+--MountThisFrameText:SetText(shapeshift_form);
+
+	--[[END DEBUGGING CODE]]--
+
+	-- Allow the user to say they don't want the last used mount
+	if #possible_mounts > 1 and MountThisSettings.dontUseLastMount and MountThis.lastMountUsed ~= nil then
+		for poss_index, mount_index in pairs(possible_mounts) do
+			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, dulm_index) end
+		end
+	end
+
+
+	--[[DEBUGGING CODE]]--
+	local chosen_mount = possible_mounts[random(#possible_mounts)];
+	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
+    MountThisFrameText:SetText(chosen_mount_name)
+    return chosen_mount;
+
+    --return possible_mounts[random(#possible_mounts)];
 end
 
 -- Return the value of a specific skill, nil if you don't have it
