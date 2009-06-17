@@ -35,7 +35,7 @@ local options =
 			name = 'Version',
 			desc = 'Show MountThis version',
 			order = 2,
-			func = function() MountThis:Print("You are using MountThis version "..tostring(MountThis.version)) end,
+			func = function() MountThis:Communicate("You are using MountThis version "..tostring(MountThis.version)) end,
 			--hidden = guiHidden,
 			width = 'full',
 		},
@@ -203,7 +203,7 @@ local options =
 					name = 'Version',
 					desc = 'Show MountThis version',
 					order = 2,
-					func = function() MountThis:Print("You are using MountThis version " .. MountThis.version) end,
+					func = function() MountThis:Communicate("You are using MountThis version " .. MountThis.version) end,
 					--hidden = guiHidden,
 					width = 'full',
 				},
@@ -274,20 +274,24 @@ function MountThis:OnInitialize()
 	self:RegisterChatCommand("mount", "Mount");
 	self:RegisterEvent("VARIABLES_LOADED");
 	self:RegisterEvent("COMPANION_LEARNED");
-	self:RegisterEvent("PLAYER_ENTERING_WORLD");
+	self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
+  self:RegisterEvent("PLAYER_ALIVE");
 end
 
 function MountThis:VARIABLES_LOADED()
+  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: VARIABLES_LOADED"); end
 	MountThisVariablesLoaded = true;
-	if MountThisSettings.debug >=1 then self:Print("Variables loaded"); end
+	if MountThisSettings.debug >=1 then self:Communicate("Variables loaded"); end
 end
 
 function MountThis:COMPANION_LEARNED()
+  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: COMPANION_LEARNED"); end
 	MountThis:UpdateMounts(true);
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
 	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
+  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
 	if MountThisVariablesLoaded then
 		if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) < tonumber(MountThis.version) then
 			MountThisSettings.version = MountThis.version;
@@ -297,8 +301,18 @@ function MountThis:PLAYER_ENTERING_WORLD()
 			if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
 			if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 		end
-		MountThis:UpdateMounts(true);
+		-- MountThis:UpdateMounts(true);  -- Moved to PLAYER_ALIVE
 	end
+end
+
+function MountThis:PLAYER_ALIVE()
+  -- This gets fired off when a player enters the world as well as when they rez after they die, so we may not want to do a full update every time
+  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ALIVE"); end
+  
+  --[[-- Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
+      the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
+      to see what our riding skill is an set variable speed mounts appropriately. --]]--
+  MountThis:UpdateMounts(true);
 end
 
 function MountThis:UpdateMounts(force_update)
@@ -336,7 +350,7 @@ function MountThis:UpdateMounts(force_update)
 		-- We make an assumption that the tooltip isn't changing
 		-- TODO: Add override to allow reinitialization (will help if they change text)
 		if force_update or not(type(MountThisSettings.Mounts[mount_name]) == "table") then
-			if force_update and MountThisSettings.debug > 1 then self:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
+			if force_update and MountThisSettings.debug >= 1 then self:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
 
 			local outland, northrend, ahnqiraj, extremely, very, require_skill, riding_skill_based, passengers;
 			-- Cycle through the lines of our tooltip to figure out the kind of mount
@@ -397,6 +411,7 @@ function MountThis:UpdateMounts(force_update)
 					current_mount.riding_skill_based = true
 					--skill_level = MountThis:CheckSkill("Riding");
 					skill_level = MountThis:GetSkillLevel("Riding");
+          if MountThisSettings.debug >= 2 then self:Communicate("Variable speed mount "..mount_name.." and skill level "..tostring(skill_level)); end
 					--MountThis:Communicate(tostring(skill_level));
 					if current_mount.flying then
 						-- Tell me again how you learned a flying mount but I don't see you having the skill...
@@ -423,7 +438,7 @@ function MountThis:UpdateMounts(force_update)
 
 			-- I can't say I always know what the pattern matches will return...
 			--if MountThisSettings.debug >=1 and not force_update then
-			if MountThisSettings.debug >=2 then
+			if MountThisSettings.debug >=3 then
 				self:Communicate("Mount flags...");
 				self:Communicate("- northrend: "..tostring(northrend));
 				self:Communicate("- outland: "..tostring(outland));
@@ -459,11 +474,12 @@ function MountThis:UpdateMounts(force_update)
 		--end -- Nil mount name???
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
+  if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
 	MountThisTooltip:Hide();
 end
 
 -- This function could be used to make comments when summoning if I was so inclined
-function MountThis:Communicate(str) self:Print(str); end
+function MountThis:Communicate(str) self:Print(ChatFrame3, str); end
 
 function MountThis:ListMounts(request_short)
 	self:Communicate("ListMounts:");
@@ -639,7 +655,7 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
             end
 
             if matches_requirements then
-                    if MountThisSettings.debug > 1 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
+                    if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
                     tinsert(possible_mounts, mount_table[mount_name].index);
             --else
                     --if MountThisSettings.debug then self:Communicate(" - "..mount_name.." did not match requirements"); end
@@ -680,7 +696,7 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 	--[[DEBUGGING CODE]]--
 	local chosen_mount = possible_mounts[random(#possible_mounts)];
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
-    MountThisFrameText:SetText(chosen_mount_name)
+    --MountThisFrameText:SetText(chosen_mount_name)
     return chosen_mount;
 
     --return possible_mounts[random(#possible_mounts)];
@@ -698,7 +714,7 @@ function MountThis:GetSkillLevel(check_skill_name)
 	for skillIndex = 1, GetNumSkillLines() do
 		local skillName, _, _, skillRank = GetSkillLineInfo(skillIndex);
 		if string.lower(skillName) == string.lower(check_skill_name) then
-			if MountThisSettings.debug > 1 then self:Communicate("Skill: "..skillName.." - "..skillRank); end
+			if MountThisSettings.debug >= 2 then self:Communicate("Skill: "..skillName.." - "..skillRank); end
 			return skillRank;
 		end
 	end
