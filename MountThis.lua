@@ -233,7 +233,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = "0.91";
+MountThis.version = 0.91;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -311,7 +311,7 @@ function MountThis:PLAYER_ALIVE()
   
   --[[-- Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
       the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
-      to see what our riding skill is an set variable speed mounts appropriately. --]]--
+      to see what our riding skill is and set variable speed mounts appropriately. --]]--
   MountThis:UpdateMounts(true);
 end
 
@@ -479,7 +479,7 @@ function MountThis:UpdateMounts(force_update)
 end
 
 -- This function could be used to make comments when summoning if I was so inclined
-function MountThis:Communicate(str) self:Print(ChatFrame3, str); end
+function MountThis:Communicate(str) self:Print(ChatFrame1, str); end
 
 function MountThis:ListMounts(request_short)
 	self:Communicate("ListMounts:");
