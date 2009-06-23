@@ -315,6 +315,9 @@ function MountThis:PLAYER_ALIVE()
   MountThis:UpdateMounts(true);
 end
 
+-- This function could be used to make comments when summoning if I was so inclined
+function MountThis:Communicate(str) self:Print(ChatFrame1, str); end
+
 function MountThis:UpdateMounts(force_update)
 	if(force_update == nil) then force_update = false; end
 	if force_update and MountThisSettings.debug >= 1 then self:Communicate("Force updating mount information");
@@ -478,9 +481,6 @@ function MountThis:UpdateMounts(force_update)
 	MountThisTooltip:Hide();
 end
 
--- This function could be used to make comments when summoning if I was so inclined
-function MountThis:Communicate(str) self:Print(ChatFrame1, str); end
-
 function MountThis:ListMounts(request_short)
 	self:Communicate("ListMounts:");
 	for name, data in pairs(MountThisSettings.Mounts) do
@@ -532,7 +532,7 @@ function MountThis:MountRandom()
 	summon_flying = true;
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
 	if MountThisSettings.mountLand == true then
-		if MountThisSettings.debug >= 1 then
+		if MountThisSettings.debug >= 2 then
 			MountThis:Communicate('MountLand option enabled');
 			MountThis:Communicate('MountLandKey set to '..tostring(MountThisSettings.mountLandKey));
 			MountThis:Communicate('Alt: '..tostring(IsAltKeyDown()));
@@ -686,20 +686,21 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 	--[[END DEBUGGING CODE]]--
 
 	-- Allow the user to say they don't want the last used mount
+  if MountThisSettings.debug >= 3 then self:Communicate("dontUseLastMount: "..tostring(MountThisSettings.dontUseLastMount)..", lastMountUsed: "..tostring(MountThis.lastMountUsed)); end
 	if #possible_mounts > 1 and MountThisSettings.dontUseLastMount and MountThis.lastMountUsed ~= nil then
 		for poss_index, mount_index in pairs(possible_mounts) do
-			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, dulm_index) end
+			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, poss_index) end
 		end
 	end
-
-
-	--[[DEBUGGING CODE]]--
-	local chosen_mount = possible_mounts[random(#possible_mounts)];
+  
+  local pmindex = random(#possible_mounts)
+	local chosen_mount = possible_mounts[pmindex];
+  if MountThisSettings.debug >= 3 then self:Communicate("PMIndex: "..tostring(pmindex)..", MountIndex: "..tostring(chosen_mount)); end
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
-    --MountThisFrameText:SetText(chosen_mount_name)
+    if MountThisSettings.debug >= 1 then 
+      self:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); end
     return chosen_mount;
 
-    --return possible_mounts[random(#possible_mounts)];
 end
 
 -- Return the value of a specific skill, nil if you don't have it
