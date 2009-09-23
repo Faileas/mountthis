@@ -233,7 +233,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.91;
+MountThis.version = 0.92;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -251,6 +251,7 @@ MountThisSettings =
 MountThisSettingsDefaults = MountThisSettings;
 MountThisVariablesLoaded = false;
 MountThis.lastMountUsed = nil;
+MountThis.PlayerAlive = false;
 
 --MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
 --MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
@@ -275,23 +276,24 @@ function MountThis:OnInitialize()
 	self:RegisterEvent("VARIABLES_LOADED");
 	self:RegisterEvent("COMPANION_LEARNED");
 	self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
-  self:RegisterEvent("PLAYER_ALIVE");
+	-- The event we should be looking into using is SKILL_LINES_CHANGED (it's after ADDON_LOADED and VARIABLES_LOADED)
+	self:RegisterEvent("PLAYER_ALIVE");
 end
 
 function MountThis:VARIABLES_LOADED()
-  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: VARIABLES_LOADED"); end
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: VARIABLES_LOADED"); end
 	MountThisVariablesLoaded = true;
 	if MountThisSettings.debug >=1 then self:Communicate("Variables loaded"); end
 end
 
 function MountThis:COMPANION_LEARNED()
-  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: COMPANION_LEARNED"); end
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: COMPANION_LEARNED"); end
 	MountThis:UpdateMounts(true);
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
 	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
-  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
 	if MountThisVariablesLoaded then
 		if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) < tonumber(MountThis.version) then
 			MountThisSettings.version = MountThis.version;
@@ -305,10 +307,16 @@ function MountThis:PLAYER_ENTERING_WORLD()
 	end
 end
 
+--[[--
+Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
+the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
+to see what our riding skill is an set variable speed mounts appropriately.
+
+A flag is set to indicate that we've updated the mounts once and don't want to do it every time someone "comes alive"
+--]]--
 function MountThis:PLAYER_ALIVE()
-  -- This gets fired off when a player enters the world as well as when they rez after they die, so we may not want to do a full update every time
-  if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ALIVE"); end
-  
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ALIVE"); end
+	if not MountThis.PlayerAlive then MountThis:UpdateMounts(true); MountThis.PlayerAlive = true; end
   --[[-- Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
       the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
       to see what our riding skill is and set variable speed mounts appropriately. --]]--
@@ -414,7 +422,7 @@ function MountThis:UpdateMounts(force_update)
 					current_mount.riding_skill_based = true
 					--skill_level = MountThis:CheckSkill("Riding");
 					skill_level = MountThis:GetSkillLevel("Riding");
-          if MountThisSettings.debug >= 2 then self:Communicate("Variable speed mount "..mount_name.." and skill level "..tostring(skill_level)); end
+					if MountThisSettings.debug >= 2 then self:Communicate("Variable speed mount "..mount_name.." and skill level "..tostring(skill_level)); end
 					--MountThis:Communicate(tostring(skill_level));
 					if current_mount.flying then
 						-- Tell me again how you learned a flying mount but I don't see you having the skill...
@@ -477,7 +485,7 @@ function MountThis:UpdateMounts(force_update)
 		--end -- Nil mount name???
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
-  if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
+	if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
 	MountThisTooltip:Hide();
 end
 
@@ -602,73 +610,72 @@ Return the name of random mount, given certain variables
 - rPassengers: # of passengers
 --]]--
 function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPassengers)
-    if MountThisSettings.debug > 1 and false then
-        self:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed)..
-                        " "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
-    end
+	if MountThisSettings.debug > 1 and false then
+		self:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
+	end
 
-    local ZoneNames = { GetMapZones(4) } ;
-    local canFlyInNorthrend = false
-    local inNorthrend = false;
-    -- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
-    local inAhnQiraj = GetZoneText() == "Ahn'Qiraj";
-    for index, zoneName in pairs(ZoneNames) do if zoneName == GetZoneText() then inNorthrend = true; end end
-    if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
+	local ZoneNames = { GetMapZones(4) } ;
+	local canFlyInNorthrend = false
+	local inNorthrend = false;
+	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
+	local inAhnQiraj = GetZoneText() == "Ahn'Qiraj";
+	for index, zoneName in pairs(ZoneNames) do if zoneName == GetZoneText() then inNorthrend = true; end end
+	if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
 	
-    -- Yes, I decided to go through the whole list of mounts and do the checking that way...
-    mount_table = MountThisSettings.Mounts;
-    -- Create a temporary table that uses an integer index rather than dictionary
-    -- This already makes me think I should rewrite the table structures...
-    local possible_mounts = {};
-    for mount_name in pairs(mount_table) do
-        if MountThisSettings.debug >= 3 then self:Communicate("Checking "..mount_name.." for use"); end
-	-- If we have it set to not use a mount, don't do anything else
-	if mount_table[mount_name].use_mount then
-            -- Easier to say it is valid and then invalidate it (coding-wise anyway)
-            local matches_requirements = true;
+	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
+	mount_table = MountThisSettings.Mounts;
+	-- Create a temporary table that uses an integer index rather than dictionary
+	-- This already makes me think I should rewrite the table structures...
+	local possible_mounts = {};
+	for mount_name in pairs(mount_table) do
+		if MountThisSettings.debug >= 3 then self:Communicate("Checking "..mount_name.." for use"); end
+		-- If we have it set to not use a mount, don't do anything else
+		if mount_table[mount_name].use_mount then
+			-- Easier to say it is valid and then invalidate it (coding-wise anyway)
+			local matches_requirements = true;
 
-            -- Check each of the requirements to see if they're valid for this random search
-	    -- If it's nil, then we don't care.  Otherwise, check the value
-            if rFlying ~= nil then
-		if rFlying ~= mount_table[mount_name].flying then matches_requirements = false end
-            end
-            if rSpeed ~= nil then
-		if rSpeed ~= mount_table[mount_name].speed then matches_requirements = false end
-            end
-            if rRequireSkill ~= nil then 
-                    if rRequireSkill ~= mount_table[mount_name].required_skill then matches_requirements = false end
-            end
-            if rRidingSkill ~= nil then 
-                    if rRidingSkill ~= mount_table[mount_name].riding_skill_based then matches_requirements = false end
-            end
-            if rPassengers ~= nil then 
-                    if rPassengers ~= mount_table[mount_name].passengers then matches_requirements = false end
-            end
+			-- Check each of the requirements to see if they're valid for this random search
+			-- If it's nil, then we don't care.  Otherwise, check the value
+			if rFlying ~= nil then
+				if rFlying ~= mount_table[mount_name].flying then matches_requirements = false end
+			end
+			if rSpeed ~= nil then
+				if rSpeed ~= mount_table[mount_name].speed then matches_requirements = false end
+			end
+			if rRequireSkill ~= nil then 
+				if rRequireSkill ~= mount_table[mount_name].required_skill then matches_requirements = false end
+			end
+			if rRidingSkill ~= nil then 
+				if rRidingSkill ~= mount_table[mount_name].riding_skill_based then matches_requirements = false end
+			end
+			if rPassengers ~= nil then 
+				if rPassengers ~= mount_table[mount_name].passengers then matches_requirements = false end
+			end
             
-            -- Cold Weather Flying yet?
-            if inNorthrend and not canFlyInNorthrend and rFlying then matches_requirements = false end
-            -- Will this fix the AQ problem I've had?
-            if mount_table[mount_name].ahnqiraj == true and not inAhnQiraj then matches_requirements = false end
-            -- TODO: Debug this skill checking section
-            if mount_table[mount_name].required_skill ~= nil then
-                    if MountThis:CheckSkill() < mount_table[mount_name].required_skill then matches_requirements = false end
-            end
+			-- Cold Weather Flying yet?
+			if inNorthrend and not canFlyInNorthrend and rFlying then matches_requirements = false end
+			-- Will this fix the AQ problem I've had?
+			if mount_table[mount_name].ahnqiraj == true and not inAhnQiraj then matches_requirements = false end
+			-- TODO: Debug this skill checking section
+			if mount_table[mount_name].required_skill ~= nil then
+				if MountThis:CheckSkill() < mount_table[mount_name].required_skill then matches_requirements = false end
+			end
 
-            if matches_requirements then
-                    if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
-                    tinsert(possible_mounts, mount_table[mount_name].index);
-            --else
-                    --if MountThisSettings.debug then self:Communicate(" - "..mount_name.." did not match requirements"); end
-            end
-        end
-    end
+			if matches_requirements then
+				if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
+					tinsert(possible_mounts, mount_table[mount_name].index);
+			--else
+				--if MountThisSettings.debug then self:Communicate(" - "..mount_name.." did not match requirements"); end
+			end
+		end
+	end
 
-    -- If we don't have any possible mounts, the result is nil
-    -- Hopefully anyone asking for a mount knows for what they're asking
-    if #possible_mounts == 0 then
-        if MountThisSettings.debug > 1 then self:Communicate("Your random mount query failed"); end
-        return nil;
-    end
+	-- If we don't have any possible mounts, the result is nil
+	-- Hopefully anyone asking for a mount knows for what they're asking
+	if #possible_mounts == 0 then
+		if MountThisSettings.debug > 1 then self:Communicate("Your random mount query failed"); end
+		return nil;
+	end
 
 --[[DEBUGGING CODE]]--
 
@@ -701,6 +708,7 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
       self:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); end
     return chosen_mount;
 
+	--return possible_mounts[random(#possible_mounts)];
 end
 
 -- Return the value of a specific skill, nil if you don't have it
