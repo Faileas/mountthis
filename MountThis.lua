@@ -346,6 +346,7 @@ function MountThis:UpdateMounts(force_update)
 			index = companion_index;
 			speed = 0;
 			flying = false;
+			swimming = false;
 			require_skill = "";
 			require_skill_level = 0;
 			riding_skill_based = false;
@@ -371,12 +372,14 @@ function MountThis:UpdateMounts(force_update)
 				--[[--
 				Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
 				There are variable speed mounts like "Big Blizzard Bear" and skill mounts like the Flying Machine and Flying Carpet
+				Swimming mounts usually explicitly state that.
 				--]]--
 				for word in string.gmatch(text, "%a+") do
 					if word == "Outland" then outland = true;
 					elseif word == "Northrend" then northrend = true;
 					elseif word == "extremely" then extremely = true;
-					elseif word == "very" then very = true;
+					elseif word == "very" then very = true
+					elseif word == "swim" then current_mount.swimming = true;
 					end
 				end
 
@@ -403,7 +406,7 @@ function MountThis:UpdateMounts(force_update)
 				if current_mount.flying then
 					if extremely then current_mount.speed = 310;
 					elseif very then current_mount.speed = 280;
-					else current_mount.speed = 60;
+					else current_mount.speed = 150;
 					end
 				else
 					if very then current_mount.speed = 100;
@@ -428,7 +431,7 @@ function MountThis:UpdateMounts(force_update)
 						-- Tell me again how you learned a flying mount but I don't see you having the skill...
 						if skill_level == nil or skill_level == 0 then current_mount.speed = 0;
 						elseif skill_level >= 300 then current_mount.speed = 280;
-						elseif skill_level <= 225 then current_mount.speed = 60;
+						elseif skill_level <= 225 then current_mount.speed = 150;
 						end
 					else
 						-- I believe even the normal land mounts have a riding skill requirement...
@@ -454,6 +457,7 @@ function MountThis:UpdateMounts(force_update)
 				self:Communicate("- northrend: "..tostring(northrend));
 				self:Communicate("- outland: "..tostring(outland));
 				self:Communicate("- ahn'qiraj: "..tostring(ahnqiraj));
+				self:Communicate("- swimming: "..tostring(swimming));
 				self:Communicate("- extremely: "..tostring(extremely));
 				self:Communicate("- very: "..tostring(very));
 				self:Communicate("- require_skill: "..tostring(require_skill));
