@@ -197,12 +197,39 @@ local options =
 					set = function(info, debugLevel) MountThisSettings.debug = debugLevel end,
 					width = 'full',
 				},
+        chatframe =
+				{
+					order = 2,
+					type = 'range',
+					name = 'Debug Output to Chat Frame #',
+					desc = 'Select which chat frame you want to send debug output to.',
+					min = 1,
+					max = NUM_CHAT_WINDOWS,
+					step = 1,
+					get = function() return MountThisSettings.chatframe end,
+					set = function(info, chatFrame) MountThisSettings.chatframe = chatFrame end,
+					width = 'full',
+				},
+        chatframenum =
+				{
+					type = 'execute',
+					name = 'Chat Frame Number',
+					desc = 'Show MountThis version',
+					order = 3,
+					func = function() 
+            for i = 1, NUM_CHAT_WINDOWS do
+              getglobal("ChatFrame"..i):AddMessage("This is ChatFrame"..i, 255, 255, 255, 0);
+              end 
+            end,
+					--hidden = guiHidden,
+					width = 'full',
+				},
 				version =
 				{
 					type = 'execute',
 					name = 'Version',
 					desc = 'Show MountThis version',
-					order = 2,
+					order = 4,
 					func = function() MountThis:Communicate("You are using MountThis version " .. MountThis.version) end,
 					--hidden = guiHidden,
 					width = 'full',
@@ -212,7 +239,7 @@ local options =
 					type = 'execute',
 					name = 'List',
 					desc = 'List all mounts known to MountThis',
-					order = 3,
+					order = 5,
 					func = function() MountThis:ListMounts(true) end,
 					--hidden = guiHidden,
 					width = 'full',
@@ -222,7 +249,7 @@ local options =
 					type = 'execute',
 					name = 'Update',
 					desc = 'Force update all mounts',
-					order = 4,
+					order = 6,
 					func = function() MountThis:UpdateMounts(true) end,
 					--hidden = guiHidden,
 					width = 'full',
@@ -241,6 +268,7 @@ MountThisSettings =
 	version = MountThis.version,
 	Mounts = {},
 	debug = 0,
+  chatframe = 1,
 	dontUseLastMount = false,
 	dismountIfMounted = true,
 	exitVehicle = true,
@@ -257,6 +285,8 @@ MountThis.PlayerAlive = false;
 --MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
 --MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
 
+-- This function could be used to make comments when summoning if I was so inclined
+function MountThis:Communicate(str) self:Print(getglobal("ChatFrame"..MountThisSettings.chatframe), str); end
 
 function MountThis:OnInitialize()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("MountThis", options, {"MountThis"});
@@ -322,9 +352,6 @@ function MountThis:PLAYER_ALIVE()
       to see what our riding skill is and set variable speed mounts appropriately. --]]--
   MountThis:UpdateMounts(true);
 end
-
--- This function could be used to make comments when summoning if I was so inclined
-function MountThis:Communicate(str) self:Print(ChatFrame1, str); end
 
 function MountThis:UpdateMounts(force_update)
 	if(force_update == nil) then force_update = false; end
@@ -515,25 +542,26 @@ This is still subject to localization problems and expansion issues
 (Who knows if they change the continent information later)
 ]]--
 function MountThis:Flyable()
-	local flyable, target = SecureCmdOptionParse("[flyable] true; false");
-	-- The parser does not take into account Dalaran, Wintergrasp, or if you have Cold Weather Flying
-	if flyable == "true" then
-		-- If only we could find out what continent we are on without messing with the current map
-		local current_zone_index = GetCurrentMapZone();
-		local current_continent_index = GetCurrentMapContinent();
-		SetMapToCurrentZone();
-		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
-			SetMapZoom(current_continent_index, current_zone_index);
-			local currentZone = GetZoneText();
-			local subZone = GetSubZoneText();
-			if currentZone == "Wintergrasp" then return false end
-			if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
-			return true;
-		end
-		SetMapZoom(current_continent_index, current_zone_index);
-		return true;
-	end
-	return false;
+	
+  -- local flyable, target = SecureCmdOptionParse("[flyable] true; false");
+	--The parser does not take into account Dalaran, Wintergrasp, or if you have Cold Weather Flying
+	-- if flyable == "true" then
+		--If only we could find out what continent we are on without messing with the current map
+		-- local current_zone_index = GetCurrentMapZone();
+		-- local current_continent_index = GetCurrentMapContinent();
+		-- SetMapToCurrentZone();
+		-- if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
+			-- SetMapZoom(current_continent_index, current_zone_index);
+			-- local currentZone = GetZoneText();
+			-- local subZone = GetSubZoneText();
+			-- if currentZone == "Wintergrasp" then return false end
+			-- if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
+			-- return true;
+		-- end
+		-- SetMapZoom(current_continent_index, current_zone_index);
+		-- return true;
+	-- end
+	-- return false;
 end
 
 -- Find the fastest random mount you can use (flying first)
