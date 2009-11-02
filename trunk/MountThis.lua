@@ -537,31 +537,19 @@ There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
 ]]--
 --[[
-Hopefully, this function will allow all the special cases to go away.
-This is still subject to localization problems and expansion issues
-(Who knows if they change the continent information later)
+IsFlyableArea() handles most of the info we need to know including Krasus's Landing, the exit tunnel from Dalaran Sewers, and non-battle Wintergrasp.
+Also adding in Cold Weather Flying check will help most cases
 ]]--
 function MountThis:Flyable()
-	
-  -- local flyable, target = SecureCmdOptionParse("[flyable] true; false");
+	local flyable, target = SecureCmdOptionParse("[flyable] true; false");
 	--The parser does not take into account Dalaran, Wintergrasp, or if you have Cold Weather Flying
-	-- if flyable == "true" then
-		--If only we could find out what continent we are on without messing with the current map
-		-- local current_zone_index = GetCurrentMapZone();
-		-- local current_continent_index = GetCurrentMapContinent();
-		-- SetMapToCurrentZone();
-		-- if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
-			-- SetMapZoom(current_continent_index, current_zone_index);
-			-- local currentZone = GetZoneText();
-			-- local subZone = GetSubZoneText();
-			-- if currentZone == "Wintergrasp" then return false end
-			-- if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
-			-- return true;
-		-- end
-		-- SetMapZoom(current_continent_index, current_zone_index);
-		-- return true;
-	-- end
-	-- return false;
+	if flyable == "true" and IsFlyableArea() then
+		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
+			return true;
+		end
+		return true;
+	end
+	return false;
 end
 
 -- Find the fastest random mount you can use (flying first)
@@ -570,6 +558,7 @@ end
 function MountThis:MountRandom()
 	-- Try to summon a flying mount first, unless asked not to do so
 	summon_flying = true;
+	
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
 	if MountThisSettings.mountLand == true then
 		if MountThisSettings.debug >= 2 then
@@ -582,7 +571,15 @@ function MountThis:MountRandom()
 		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false; end
 		if MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false; end
 		if MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false; end
-	end;
+	end
+	-- Also can't get on flying mounts when swimming.
+	if IsSwimming() then 
+		if MountThisSettings.debug >= 2 then
+			MountThis:Communicate('You\'re swimming, so using land mount.');
+		end
+		summon_flying = false;
+	end
+	
 	if MountThis:Flyable() and summon_flying then
 		if MountThis:Mount(MountThis:Random(true,310)) then return true; end
 		if MountThis:Mount(MountThis:Random(true,280)) then return true; end
@@ -597,20 +594,6 @@ end
 -- Give a mount ID and I'll use it, otherwise, it's a random mount
 function MountThis:Mount(companionID)
 	if MountThisSettings.debug >= 4 then MountThis:Communicate(tostring(companionID)); end
-
-	if IsMounted() then if MountThisSettings.dismountIfMounted then return MountThis:Dismount(); end end
-	if CanExitVehicle() then if MountThisSettings.exitVehicle then return MountThis:Dismount(); end end
-	if GetShapeshiftForm() == 0 then if MountThisSettings.unShapeshift then MountThis:Dismount(); end end
-
-	--if IsMounted() or CanExitVehicle() then
-	--	if MountThisSettings.debug >=1 then self:Communicate("Already mounted"); end
-	--	-- TODO: Fix this! It should be initialized on startup
-	--	if MountThisSettings.dismountIfMounted == nil then MountThisSettings.dismountIfMounted = false; end
-	--	if MountThisSettings.dismountIfMounted then
-	--		if MountThisSettings.debug >=1 then self:Communicate("Dismounting only"); end
-	--		return MountThis:Dismount();
-	--	end
-	--end
 
 	if companionID ~= nil then
 		CallCompanion(MOUNT, companionID);
@@ -646,6 +629,11 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 		self:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
 	end
 
+	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
+	if IsMounted() then if MountThisSettings.dismountIfMounted then return MountThis:Dismount(); end end
+	if CanExitVehicle() then if MountThisSettings.exitVehicle then return MountThis:Dismount(); end end
+	if GetShapeshiftForm() == 0 then if MountThisSettings.unShapeshift then MountThis:Dismount(); end end
+	
 	local ZoneNames = { GetMapZones(4) } ;
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
@@ -774,31 +762,4 @@ function MountThis:ToolTipDebug(spellID)
 		MountThis:Communicate(text);
 	end
 	MountThisTooltip:Hide();
-end
-
--- This function is being saved, but deprecated
-function MountThis:FlyableArea()
-    -- Continents 3 (Outland) and 4 (Northrend) are flyable
-    local currentZone = GetZoneText();
-    local subZone = GetSubZoneText();
-    if currentZone == "Wintergrasp" then return false end
-    if currentZone == "Dalaran" and subZone ~= "Krasus' Landing" then return false end;
-    -- The Underbelly is an issue due to the sewer opening having the same subzone text as the rest
-
-    -- Move this below some of the checks to remove that 0.001 second delay when unnecessary (Hey, it's an optimization!)
-    local cold_weather_flying = MountThis:CheckSkill("Cold Weather Flying")
-
-    -- This is a stupid bug.  Evidently "The Frozen Sea" is not a part of Northrend or Outland.
-    if currentZone == "The Frozen Sea" and cold_weather_flying ~= nil then return true; end
-    -- I agree that it is pretty silly to do this check constantly.  I should build a hash for easy lookup.
-    for continent_index = 3, 4 do
-	local ZoneNames = { GetMapZones(continent_index) } ;
-	for index, zoneName in pairs(ZoneNames) do
-	    if zoneName == currentZone then
-		if cold_weather_flying == nil and continent_index == 4 then return false; end
-                return true;
-            end
-        end
-    end
-    return false;
 end
