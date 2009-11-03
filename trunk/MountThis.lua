@@ -563,9 +563,9 @@ function MountThis:MountRandom()
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
 		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
-	elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
-		return MountThis:Dismount()
+	-- elseif UnitClass("player") == "GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
+		-- if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
+		-- return MountThis:Dismount()
 	end
 
 	-- Try to summon a flying mount first, unless asked not to do so
@@ -619,9 +619,9 @@ function MountThis:Mount(companionID)
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
 		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
-	elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
-		return MountThis:Dismount()
+	-- elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
+		-- if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
+		-- return MountThis:Dismount()
 	end
 	
 	if companionID ~= nil then
