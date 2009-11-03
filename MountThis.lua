@@ -197,7 +197,7 @@ local options =
 					set = function(info, debugLevel) MountThisSettings.debug = debugLevel end,
 					width = 'full',
 				},
-        chatframe =
+        chatFrame =
 				{
 					order = 2,
 					type = 'range',
@@ -206,11 +206,11 @@ local options =
 					min = 1,
 					max = NUM_CHAT_WINDOWS,
 					step = 1,
-					get = function() return MountThisSettings.chatframe end,
-					set = function(info, chatFrame) MountThisSettings.chatframe = chatFrame end,
+					get = function() return MountThisSettings.chatFrame end,
+					set = function(info, chatFrame) MountThisSettings.chatFrame = chatFrame end,
 					width = 'full',
 				},
-        chatframenum =
+        chatFramenum =
 				{
 					type = 'execute',
 					name = 'Chat Frame Number',
@@ -218,7 +218,7 @@ local options =
 					order = 3,
 					func = function() 
             for i = 1, NUM_CHAT_WINDOWS do
-              getglobal("ChatFrame"..i):AddMessage("This is ChatFrame"..i, 255, 255, 255, 0);
+              getglobal("chatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
               end 
             end,
 					--hidden = guiHidden,
@@ -260,7 +260,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.93;
+MountThis.version = 0.94;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -268,7 +268,7 @@ MountThisSettings =
 	version = MountThis.version,
 	Mounts = {},
 	debug = 0,
-  chatframe = 1,
+	chatFrame = 1,
 	dontUseLastMount = false,
 	dismountIfMounted = true,
 	exitVehicle = true,
@@ -286,7 +286,11 @@ MountThis.PlayerAlive = false;
 --MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
 
 -- This function could be used to make comments when summoning if I was so inclined
-function MountThis:Communicate(str) self:Print(getglobal("ChatFrame"..MountThisSettings.chatframe), str); end
+function MountThis:Communicate(str)
+	-- Do this because Marinna is a noob
+	if MountThisSettings.chatFrame == nil then MountThisSettings.chatFrame = MountThisSettingsDefaults.chatFrame; end
+	self:Print(getglobal("chatFrame"..MountThisSettings.chatFrame), str);
+end
 
 function MountThis:OnInitialize()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("MountThis", options, {"MountThis"});
