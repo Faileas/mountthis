@@ -260,7 +260,7 @@ local options =
 }
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.92;
+MountThis.version = 0.93;
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -556,6 +556,18 @@ end
 -- The shapeshift forms aren't counted in the random at this time
 -- TODO: Figure out how to create/use secure buttons to allow shapeshift forms
 function MountThis:MountRandom()
+	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
+	if IsMounted() and MountThisSettings.dismountIfMounted then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Mounted: Dismounting'); end
+		return MountThis:Dismount() 
+	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
+		return MountThis:Dismount()
+	elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
+		return MountThis:Dismount()
+	end
+
 	-- Try to summon a flying mount first, unless asked not to do so
 	summon_flying = true;
 	
@@ -568,33 +580,50 @@ function MountThis:MountRandom()
 			MountThis:Communicate('Control: '..tostring(IsControlKeyDown()));
 			MountThis:Communicate('Shift: '..tostring(IsShiftKeyDown()));
 		end
-		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false; end
-		if MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false; end
-		if MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false; end
+		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then
+			summon_flying = false
+		elseif MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then
+			summon_flying = false
+		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then
+			summon_flying = false
+		end
 	end
 	-- Also can't get on flying mounts when swimming.
 	if IsSwimming() then 
 		if MountThisSettings.debug >= 2 then
-			MountThis:Communicate('You\'re swimming, so using land mount.');
+			MountThis:Communicate('You\'re swimming, so we must select a land mount.');
 		end
 		summon_flying = false;
 	end
 	
 	if MountThis:Flyable() and summon_flying then
-		if MountThis:Mount(MountThis:Random(true,310)) then return true; end
-		if MountThis:Mount(MountThis:Random(true,280)) then return true; end
-		-- Check to see if you're a fast druid (this should work if you're moving)
-		if MountThis:Mount(MountThis:Random(true,60)) then return true; end
+		if MountThis:Mount(MountThis:Random(true,310)) then return true; 
+		elseif MountThis:Mount(MountThis:Random(true,280)) then return true; 
+		elseif MountThis:Mount(MountThis:Random(true,150)) then return true; 
+		end
 	end
-	if MountThis:Mount(MountThis:Random(false,100)) then return true; end
-	if MountThis:Mount(MountThis:Random(false,60)) then return true; end
+	if MountThis:Mount(MountThis:Random(false,100)) then return true;
+	elseif MountThis:Mount(MountThis:Random(false,60)) then return true; 
+	end
 	return false;
 end
 
 -- Give a mount ID and I'll use it, otherwise, it's a random mount
 function MountThis:Mount(companionID)
-	if MountThisSettings.debug >= 4 then MountThis:Communicate(tostring(companionID)); end
+	if MountThisSettings.debug >= 4 then MountThis:Communicate("Trying to mount "..tostring(companionID)); end
 
+	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
+	if IsMounted() and MountThisSettings.dismountIfMounted then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Mounted: Dismounting'); end
+		return MountThis:Dismount() 
+	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
+		return MountThis:Dismount()
+	elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
+		return MountThis:Dismount()
+	end
+	
 	if companionID ~= nil then
 		CallCompanion(MOUNT, companionID);
 		MountThis.lastMountUsed = companionID;
@@ -625,21 +654,20 @@ Return the name of random mount, given certain variables
 - rPassengers: # of passengers
 --]]--
 function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPassengers)
-	if MountThisSettings.debug > 1 and false then
+	if MountThisSettings.debug > 1 then
 		self:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
 	end
 
-	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
-	if IsMounted() then if MountThisSettings.dismountIfMounted then return MountThis:Dismount(); end end
-	if CanExitVehicle() then if MountThisSettings.exitVehicle then return MountThis:Dismount(); end end
-	if GetShapeshiftForm() == 0 then if MountThisSettings.unShapeshift then MountThis:Dismount(); end end
-	
 	local ZoneNames = { GetMapZones(4) } ;
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
 	local inAhnQiraj = GetZoneText() == "Ahn'Qiraj";
-	for index, zoneName in pairs(ZoneNames) do if zoneName == GetZoneText() then inNorthrend = true; end end
+	for index, zoneName in pairs(ZoneNames) do 
+		if zoneName == GetZoneText() then 
+			inNorthrend = true; 
+		end 
+	end
 	if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
 	
 	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
@@ -656,29 +684,43 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 
 			-- Check each of the requirements to see if they're valid for this random search
 			-- If it's nil, then we don't care.  Otherwise, check the value
-			if rFlying ~= nil then
-				if rFlying ~= mount_table[mount_name].flying then matches_requirements = false end
-			end
-			if rSpeed ~= nil then
-				if rSpeed ~= mount_table[mount_name].speed then matches_requirements = false end
-			end
-			if rRequireSkill ~= nil then 
-				if rRequireSkill ~= mount_table[mount_name].required_skill then matches_requirements = false end
-			end
-			if rRidingSkill ~= nil then 
-				if rRidingSkill ~= mount_table[mount_name].riding_skill_based then matches_requirements = false end
-			end
-			if rPassengers ~= nil then 
-				if rPassengers ~= mount_table[mount_name].passengers then matches_requirements = false end
-			end
-            
+			if rFlying ~= nil and rFlying ~= mount_table[mount_name].flying then 
+				if MountThisSettings.debug >= 4 then 
+					self:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); 
+				end
+				matches_requirements = false
+			elseif rSpeed ~= nil and rSpeed ~= mount_table[mount_name].speed then
+				if MountThisSettings.debug >= 4 then 
+					self:Communicate("Speed "..tostring(rSpeed).." and "..tostring(mount_table[mount_name].speed)); 
+				end
+				matches_requirements = false
+			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
+				if MountThisSettings.debug >= 4 then 
+					self:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill)); 
+				end
+			matches_requirements = false
+			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
+				if MountThisSettings.debug >= 4 then 
+					self:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); 
+				end
+				matches_requirements = false
+			elseif rPassengers ~= nil and rPassengers ~= mount_table[mount_name].passengers then
+				if MountThisSettings.debug >= 4 then 
+					self:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); 
+				end
+				matches_requirements = false 
+			            
 			-- Cold Weather Flying yet?
-			if inNorthrend and not canFlyInNorthrend and rFlying then matches_requirements = false end
+			elseif inNorthrend and not canFlyInNorthrend and rFlying then
+				matches_requirements = false
 			-- Will this fix the AQ problem I've had?
-			if mount_table[mount_name].ahnqiraj == true and not inAhnQiraj then matches_requirements = false end
+			elseif mount_table[mount_name].ahnqiraj == true and not inAhnQiraj then
+				matches_requirements = false 
 			-- TODO: Debug this skill checking section
-			if mount_table[mount_name].required_skill ~= nil then
-				if MountThis:CheckSkill() < mount_table[mount_name].required_skill then matches_requirements = false end
+			elseif mount_table[mount_name].required_skill ~= nil 
+				and MountThis:CheckSkill() < mount_table[mount_name].required_skill then
+				if MountThisSettings.debug >= 3 then self:Communicate("This mount needs a profession skill!"); end
+				matches_requirements = false 
 			end
 
 			if matches_requirements then
@@ -725,7 +767,8 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
   if MountThisSettings.debug >= 3 then self:Communicate("PMIndex: "..tostring(pmindex)..", MountIndex: "..tostring(chosen_mount)); end
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
     if MountThisSettings.debug >= 1 then 
-      self:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); end
+      self:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); 
+			end
     return chosen_mount;
 
 	--return possible_mounts[random(#possible_mounts)];
@@ -733,9 +776,9 @@ end
 
 -- Return the value of a specific skill, nil if you don't have it
 function MountThis:CheckSkill(check_skill_name)
+	if MountThisSettings.debug >= 2 then MountThis:Communicate("Checking skill "..check_skill_name); end
 	local spellName = GetSpellInfo(check_skill_name);
-	--self:Communicate(spellName);
-	if spellName ~= nil then return true end
+	if spellName ~= nil then return true; end
 	if MountThisSettings.debug > 1 then self:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
 end
