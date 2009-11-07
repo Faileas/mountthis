@@ -289,7 +289,7 @@ MountThis.PlayerAlive = false;
 function MountThis:Communicate(str)
 	-- Do this because Marinna is a noob
 	if MountThisSettings.chatFrame == nil then MountThisSettings.chatFrame = MountThisSettingsDefaults.chatFrame; end
-	self:Print(getglobal("chatFrame"..MountThisSettings.chatFrame), str);
+	self:Print(getglobal("ChatFrame"..MountThisSettings.chatFrame), str);
 end
 
 function MountThis:OnInitialize()
@@ -312,7 +312,22 @@ function MountThis:OnInitialize()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
 	-- The event we should be looking into using is SKILL_LINES_CHANGED (it's after ADDON_LOADED and VARIABLES_LOADED)
 	self:RegisterEvent("PLAYER_ALIVE");
+	self:RegisterEvent("UNIT_SPELLCAST_FAILED");
+	self:RegisterEvent("UNIT_SPELLCAST_FAILED_QUIET");
 end
+
+
+function MountThis:UNIT_SPELLCAST_FAILED(...)
+	local event, unit_casting, spell_name, spell_rank = ...;
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountSuccess = false;
+end
+function MountThis:UNIT_SPELLCAST_FAILED_QUIET(...)
+	local event, unit_casting, spell_name, spell_rank = ...;
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED_QUIET - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountSuccess = false;
+end
+
 
 function MountThis:VARIABLES_LOADED()
 	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: VARIABLES_LOADED"); end
@@ -628,11 +643,19 @@ function MountThis:Mount(companionID)
 		-- return MountThis:Dismount()
 	end
 	
-	if companionID ~= nil then
+	if companionID ~= nil and companionID ~= "" then
+		MountThis.mountSuccess = true;
 		CallCompanion(MOUNT, companionID);
 		MountThis.lastMountUsed = companionID;
+		if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount failed for "..tostring(companionID)); end
+		if MountThis.mountSuccess == false then
+			if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
+			return false;
+		end
+		if MountThisSettings.debug >= 4 then MountThis:Communicate("Mounting succeeded for "..tostring(companionID)); end
 		return true;
 	end
+	if MountThisSettings.debug >= 4 then MountThis:Communicate("companionID not supplied"); end
 	return false;
 end
 
