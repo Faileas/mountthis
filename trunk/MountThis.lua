@@ -8,6 +8,28 @@ the new functions, even if they don't know.
 BINDING_HEADER_MOUNTTHIS = "MountThis";
 BINDING_NAME_MOUNTRANDOM = "Random Mount";
 
+MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
+MountThis.version = 0.96;
+MountThis.reqVersion = MountThis.version;
+MountThis.optionsFrames = {};
+MountThisSettings =
+{
+	version = MountThis.version,
+	Mounts = {},
+	debug = 0,
+	chatFrame = 1,
+	dontUseLastMount = false,
+	dismountIfMounted = true,
+	exitVehicle = true,
+	unShapeshift = true,
+	mountLand = true;
+    mountLandKey = 0;
+};
+MountThisSettingsDefaults = MountThisSettings;
+MountThisVariablesLoaded = false;
+MountThis.lastMountUsed = nil;
+MountThis.PlayerAlive = false;
+
 local options =
 {
 	name = 'MountThis',
@@ -218,7 +240,7 @@ local options =
 					order = 3,
 					func = function() 
             for i = 1, NUM_CHAT_WINDOWS do
-              getglobal("chatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
+              getglobal("ChatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
               end 
             end,
 					--hidden = guiHidden,
@@ -259,28 +281,6 @@ local options =
 	}
 }
 
-MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.95;
-MountThis.reqVersion = MountThis.version;
-MountThis.optionsFrames = {};
-MountThisSettings =
-{
-	version = MountThis.version,
-	Mounts = {},
-	debug = 0,
-	chatFrame = 1,
-	dontUseLastMount = false,
-	dismountIfMounted = true,
-	exitVehicle = true,
-	unShapeshift = true,
-	mountLand = true;
-    mountLandKey = 0;
-};
-MountThisSettingsDefaults = MountThisSettings;
-MountThisVariablesLoaded = false;
-MountThis.lastMountUsed = nil;
-MountThis.PlayerAlive = false;
-
 --MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
 --MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
 --MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
@@ -312,20 +312,44 @@ function MountThis:OnInitialize()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
 	-- The event we should be looking into using is SKILL_LINES_CHANGED (it's after ADDON_LOADED and VARIABLES_LOADED)
 	self:RegisterEvent("PLAYER_ALIVE");
+	self:RegisterEvent("UNIT_SPELLCAST_START");
 	self:RegisterEvent("UNIT_SPELLCAST_FAILED");
 	self:RegisterEvent("UNIT_SPELLCAST_FAILED_QUIET");
+	self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
 end
 
 
+function MountThis:UNIT_SPELLCAST_START(...)
+	local event, unit_casting, spell_name, spell_rank = ...;
+	if unit_casting ~= "player" then return false end;
+	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_START - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountBlock = true;
+	MountThis.mountSuccess = true;
+end
 function MountThis:UNIT_SPELLCAST_FAILED(...)
 	local event, unit_casting, spell_name, spell_rank = ...;
+	if unit_casting ~= "player" then return false end;
+	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
 	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountBlock = false;
 	MountThis.mountSuccess = false;
 end
 function MountThis:UNIT_SPELLCAST_FAILED_QUIET(...)
 	local event, unit_casting, spell_name, spell_rank = ...;
+	if unit_casting ~= "player" then return false end;
+	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
 	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED_QUIET - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountBlock = false;
 	MountThis.mountSuccess = false;
+end
+function MountThis:UNIT_SPELLCAST_SUCCEEDED(...)
+	local event, unit_casting, spell_name, spell_rank = ...;
+	if unit_casting ~= "player" then return false end;
+	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
+	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_SUCCEEDED - "..unit_casting.." "..spell_name.." "..spell_rank); end
+	MountThis.mountBlock = false;
+	MountThis.mountSuccess = true;
 end
 
 
@@ -369,7 +393,7 @@ function MountThis:PLAYER_ALIVE()
   --[[-- Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
       the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
       to see what our riding skill is and set variable speed mounts appropriately. --]]--
-  MountThis:UpdateMounts(true);
+  --MountThis:UpdateMounts(true);
 end
 
 function MountThis:UpdateMounts(force_update)
@@ -393,6 +417,7 @@ function MountThis:UpdateMounts(force_update)
 			speed = 0;
 			flying = false;
 			swimming = false;
+			land = true;	-- assume all mounts are at least land mounts
 			require_skill = "";
 			require_skill_level = 0;
 			riding_skill_based = false;
@@ -568,6 +593,7 @@ function MountThis:Flyable()
 		end
 		return true;
 	end
+	if MountThisSettings.debug >= 4 then MountThis:Communicate("This is not a flyable area according to Blizzard") end
 	return false;
 end
 
@@ -610,19 +636,19 @@ function MountThis:MountRandom()
 	-- Also can't get on flying mounts when swimming.
 	if IsSwimming() then 
 		if MountThisSettings.debug >= 2 then
-			MountThis:Communicate('You\'re swimming, so we must select a land mount.');
+			MountThis:Communicate("You're swimming, so we must select a land mount.");
 		end
 		summon_flying = false;
 	end
 	
 	if MountThis:Flyable() and summon_flying then
-		if MountThis:Mount(MountThis:Random(true,310)) then return true; 
-		elseif MountThis:Mount(MountThis:Random(true,280)) then return true; 
-		elseif MountThis:Mount(MountThis:Random(true,150)) then return true; 
+		if MountThis:Mount(MountThis:Random(true,310)) == true then return true; 
+		elseif MountThis:Mount(MountThis:Random(true,280)) == true then return true; 
+		elseif MountThis:Mount(MountThis:Random(true,150)) == true then return true; 
 		end
 	end
-	if MountThis:Mount(MountThis:Random(false,100)) then return true;
-	elseif MountThis:Mount(MountThis:Random(false,60)) then return true; 
+	if MountThis:Mount(MountThis:Random(false,100)) == true then return true;
+	elseif MountThis:Mount(MountThis:Random(false,60)) == true then return true; 
 	end
 	return false;
 end
@@ -644,10 +670,10 @@ function MountThis:Mount(companionID)
 	end
 	
 	if companionID ~= nil and companionID ~= "" then
-		MountThis.mountSuccess = true;
+		MountThis.mountSuccess = false;
 		CallCompanion(MOUNT, companionID);
 		MountThis.lastMountUsed = companionID;
-		if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount failed for "..tostring(companionID)); end
+		if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount succeeded for "..tostring(companionID)); end
 		if MountThis.mountSuccess == false then
 			if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
 			return false;
@@ -655,6 +681,28 @@ function MountThis:Mount(companionID)
 		if MountThisSettings.debug >= 4 then MountThis:Communicate("Mounting succeeded for "..tostring(companionID)); end
 		return true;
 	end
+
+	-- Don's new code to try to yield to CallCompanion so we can get a return value
+	--if companionID ~= nil and companionID ~= "" then	-- nil would come from MountRandom "" would come from the command line
+	--
+	--	co = coroutine.create(function ()
+	--		frame:SetScript("OnEvent", function(self, event, ...)
+	--			return MountThis[event](self, ...); -- call one of the functions above
+	--		end);
+	--	)
+	--
+	--	MountThis.mountSuccess = false;
+	--	CallCompanion(MOUNT, companionID);
+	--	MountThis.lastMountUsed = companionID;
+	--	if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount succeeded for "..tostring(companionID)); end
+	--	if MountThis.mountSuccess == false then
+	--		if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
+	--		return false;
+	--	end
+	--	if MountThisSettings.debug >= 4 then MountThis:Communicate("Mounting succeeded for "..tostring(companionID)); end
+	--	return true;
+	--end
+
 	if MountThisSettings.debug >= 4 then MountThis:Communicate("companionID not supplied"); end
 	return false;
 end
@@ -712,29 +760,19 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 			-- Check each of the requirements to see if they're valid for this random search
 			-- If it's nil, then we don't care.  Otherwise, check the value
 			if rFlying ~= nil and rFlying ~= mount_table[mount_name].flying then 
-				if MountThisSettings.debug >= 4 then 
-					self:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); 
-				end
+				if MountThisSettings.debug >= 5 then self:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); end
 				matches_requirements = false
 			elseif rSpeed ~= nil and rSpeed ~= mount_table[mount_name].speed then
-				if MountThisSettings.debug >= 4 then 
-					self:Communicate("Speed "..tostring(rSpeed).." and "..tostring(mount_table[mount_name].speed)); 
-				end
+				if MountThisSettings.debug >= 5 then self:Communicate("Speed "..tostring(rSpeed).." and "..tostring(mount_table[mount_name].speed)); end
 				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
-				if MountThisSettings.debug >= 4 then 
-					self:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill)); 
-				end
+				if MountThisSettings.debug >= 5 then self:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill));  end
 			matches_requirements = false
 			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
-				if MountThisSettings.debug >= 4 then 
-					self:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); 
-				end
+				if MountThisSettings.debug >= 5 then self:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); end
 				matches_requirements = false
 			elseif rPassengers ~= nil and rPassengers ~= mount_table[mount_name].passengers then
-				if MountThisSettings.debug >= 4 then 
-					self:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); 
-				end
+				if MountThisSettings.debug >= 5 then self:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); end
 				matches_requirements = false 
 			            
 			-- Cold Weather Flying yet?
@@ -753,8 +791,6 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 			if matches_requirements then
 				if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
 					tinsert(possible_mounts, mount_table[mount_name].index);
-			--else
-				--if MountThisSettings.debug then self:Communicate(" - "..mount_name.." did not match requirements"); end
 			end
 		end
 	end
