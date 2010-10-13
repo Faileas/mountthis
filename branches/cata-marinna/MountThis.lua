@@ -303,7 +303,12 @@ function MountThis:OnInitialize()
 	There is no easy way to determine flying, or speed otherwise.
 	Hopefully this will be created once and we'll be okay...
 	--]]--
-	CreateFrame("GameTooltip","MountThisTooltip",UIParent,"GameTooltipTemplate");
+	CreateFrame("GameTooltip","MountThisTooltip",nil,"GameTooltipTemplate");
+	MountThisTooltip:SetOwner( WorldFrame, "ANCHOR_NONE" );
+	MountThisTooltip:AddFontStrings(
+		MountThisTooltip:CreateFontString( "$parentTextLeft1", nil, "GameTooltipText" ),
+		MountThisTooltip:CreateFontString( "$parentTextRight1", nil, "GameTooltipText" ) );
+
 
 	self:RegisterChatCommand("mountrandom", "MountRandom");
 	self:RegisterChatCommand("mount", "Mount");
@@ -427,7 +432,8 @@ function MountThis:UpdateMounts(force_update)
 		}
 
 		-- Set up our local frame for reading
-		GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+		-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+		MountThisTooltip:ClearLines()
 		MountThisTooltip:SetHyperlink("spell:"..spellID);
 		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
 		-- We make an assumption that the tooltip isn't changing
@@ -560,8 +566,8 @@ function MountThis:UpdateMounts(force_update)
 		--end -- Nil mount name???
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
-	if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
-	MountThisTooltip:Hide();
+	-- if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
+	-- MountThisTooltip:Hide();
 end
 
 function MountThis:ListMounts(request_short)
@@ -860,12 +866,13 @@ end
 function MountThis:ToolTipDebug(spellID)
 	-- If you don't specify a spell on the command line, we'll use this one
 	if spellID == nil then spellID = 44151; end
-	GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+	-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+	MountThisTooltip:ClearLines()
 	MountThisTooltip:SetHyperlink("spell:"..spellID);
 
 	for i = 1, MountThisTooltip:NumLines() do
 		local text = _G["MountThisTooltipTextLeft"..i]:GetText();
 		MountThis:Communicate(text);
 	end
-	MountThisTooltip:Hide();
+	-- MountThisTooltip:Hide();
 end
