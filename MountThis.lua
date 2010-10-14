@@ -303,19 +303,24 @@ function MountThis:OnInitialize()
 	There is no easy way to determine flying, or speed otherwise.
 	Hopefully this will be created once and we'll be okay...
 	--]]--
-	CreateFrame("GameTooltip","MountThisTooltip",UIParent,"GameTooltipTemplate");
+	CreateFrame("GameTooltip","MountThisTooltip",nil,"GameTooltipTemplate");
+	MountThisTooltip:SetOwner( WorldFrame, "ANCHOR_NONE" );
+	MountThisTooltip:AddFontStrings(
+	MountThisTooltip:CreateFontString( "$parentTextLeft1", nil, "GameTooltipText" ),
+	MountThisTooltip:CreateFontString( "$parentTextRight1", nil, "GameTooltipText" ) );
+
 
 	self:RegisterChatCommand("mountrandom", "MountRandom");
 	self:RegisterChatCommand("mount", "Mount");
-	self:RegisterEvent("VARIABLES_LOADED");
-	self:RegisterEvent("COMPANION_LEARNED");
-	self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
+	--self:RegisterEvent("VARIABLES_LOADED");
+	--self:RegisterEvent("COMPANION_LEARNED");
+	--self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
 	-- The event we should be looking into using is SKILL_LINES_CHANGED (it's after ADDON_LOADED and VARIABLES_LOADED)
-	self:RegisterEvent("PLAYER_ALIVE");
-	self:RegisterEvent("UNIT_SPELLCAST_START");
-	self:RegisterEvent("UNIT_SPELLCAST_FAILED");
-	self:RegisterEvent("UNIT_SPELLCAST_FAILED_QUIET");
-	self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+	--self:RegisterEvent("PLAYER_ALIVE");
+	--self:RegisterEvent("UNIT_SPELLCAST_START");
+	--self:RegisterEvent("UNIT_SPELLCAST_FAILED");
+	--self:RegisterEvent("UNIT_SPELLCAST_FAILED_QUIET");
+	--self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
 end
 
 
@@ -427,7 +432,8 @@ function MountThis:UpdateMounts(force_update)
 		}
 
 		-- Set up our local frame for reading
-		GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+		-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+		MountThisTooltip:ClearLines()
 		MountThisTooltip:SetHyperlink("spell:"..spellID);
 		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
 		-- We make an assumption that the tooltip isn't changing
@@ -495,7 +501,7 @@ function MountThis:UpdateMounts(force_update)
 				if string.match(text, "depending on your Riding skill") ~= nil then
 					current_mount.riding_skill_based = true
 					--skill_level = MountThis:CheckSkill("Riding");
-					skill_level = MountThis:GetSkillLevel("Riding");
+					skill_level = MountThis:GetRidingSkill();
 					if MountThisSettings.debug >= 2 then self:Communicate("Variable speed mount "..mount_name.." and skill level "..tostring(skill_level)); end
 					--MountThis:Communicate(tostring(skill_level));
 					if current_mount.flying then
@@ -560,8 +566,8 @@ function MountThis:UpdateMounts(force_update)
 		--end -- Nil mount name???
 	end
 	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
-	if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
-	MountThisTooltip:Hide();
+	-- if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
+	-- MountThisTooltip:Hide();
 end
 
 function MountThis:ListMounts(request_short)
@@ -845,27 +851,38 @@ function MountThis:CheckSkill(check_skill_name)
 	if MountThisSettings.debug > 1 then self:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
 end
-function MountThis:GetSkillLevel(check_skill_name)
-	for skillIndex = 1, GetNumSkillLines() do
-		local skillName, _, _, skillRank = GetSkillLineInfo(skillIndex);
-		if string.lower(skillName) == string.lower(check_skill_name) then
-			if MountThisSettings.debug >= 2 then self:Communicate("Skill: "..skillName.." - "..skillRank); end
-			return skillRank;
-		end
-	end
-	return nil;
+
+function MountThis:GetRidingSkill()
+
+	skillType, spellId = GetSpellBookItemInfo("Apprentice Riding")
+	if(spellId~=nil) then return 75 end
+
+	skillType, spellId = GetSpellBookItemInfo("Journeyman Riding")
+	if(spellId~=nil) then return 150 end
+
+	skillType, spellId = GetSpellBookItemInfo("Expert Riding")
+	if(spellId~=nil) then return 225 end
+
+	skillType, spellId = GetSpellBookItemInfo("Artisan Riding")
+	if(spellId~=nil) then return 300 end
+
+	skillType, spellId = GetSpellBookItemInfo("Master Riding")
+	if(spellId~=nil) then return 375 end
+
+	return 0;
 end
 
 -- Use this to debug a tooltip
 function MountThis:ToolTipDebug(spellID)
 	-- If you don't specify a spell on the command line, we'll use this one
 	if spellID == nil then spellID = 44151; end
-	GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+	-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
+	MountThisTooltip:ClearLines()
 	MountThisTooltip:SetHyperlink("spell:"..spellID);
 
 	for i = 1, MountThisTooltip:NumLines() do
 		local text = _G["MountThisTooltipTextLeft"..i]:GetText();
 		MountThis:Communicate(text);
 	end
-	MountThisTooltip:Hide();
+	-- MountThisTooltip:Hide();
 end
