@@ -1,6 +1,6 @@
-﻿## Interface: 30200
+## Interface: 40000
 ## Title: MountThis
-## Notes: Add /mount random commands for macros
+## Notes: Add /mountrandom commands for macros
 ## Author: GovtGeek
 ## X-eMail: govtgeek@gmail.com
 ## X-Category: Interface Enhancements
