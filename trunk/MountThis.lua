@@ -9,7 +9,8 @@ BINDING_HEADER_MOUNTTHIS = "MountThis";
 BINDING_NAME_MOUNTRANDOM = "Random Mount";
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
-MountThis.version = 0.97;
+--MountThis.version = 0.97;
+MountThis.version = tonumber(strmatch("$Revision: 1 $", "%d+"));
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
 MountThisSettings =
@@ -21,9 +22,8 @@ MountThisSettings =
 	dontUseLastMount = false,
 	dismountIfMounted = true,
 	exitVehicle = true,
-	unShapeshift = true,
 	mountLand = true;
-    mountLandKey = 0;
+	mountLandKey = 0;
 };
 MountThisSettingsDefaults = MountThisSettings;
 MountThisVariablesLoaded = false;
@@ -219,7 +219,7 @@ local options =
 					set = function(info, debugLevel) MountThisSettings.debug = debugLevel end,
 					width = 'full',
 				},
-        chatFrame =
+				chatFrame =
 				{
 					order = 2,
 					type = 'range',
@@ -232,17 +232,17 @@ local options =
 					set = function(info, chatFrame) MountThisSettings.chatFrame = chatFrame end,
 					width = 'full',
 				},
-        chatFramenum =
+				chatFramenum =
 				{
 					type = 'execute',
 					name = 'Chat Frame Number',
 					desc = 'Show MountThis version',
 					order = 3,
 					func = function() 
-            for i = 1, NUM_CHAT_WINDOWS do
-              getglobal("ChatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
-              end 
-            end,
+						for i = 1, NUM_CHAT_WINDOWS do
+							getglobal("ChatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
+						end 
+					end,
 					--hidden = guiHidden,
 					width = 'full',
 				},
@@ -281,10 +281,6 @@ local options =
 	}
 }
 
---MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
---MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
---MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
-
 -- This function could be used to make comments when summoning if I was so inclined
 function MountThis:Communicate(str)
 	-- Do this because Marinna is a noob
@@ -298,227 +294,116 @@ function MountThis:OnInitialize()
 	MountThis.optionsFrames.General = ACD3:AddToBlizOptions('MountThis', nil, nil, 'General');
 	MountThis.optionsFrames.Debugging = ACD3:AddToBlizOptions('MountThis', 'Debugging', 'MountThis', 'Debugging');
 
-	--[[--
-	We need a frame we can abuse to read the tooltips.
-	There is no easy way to determine flying, or speed otherwise.
-	Hopefully this will be created once and we'll be okay...
-	--]]--
-	CreateFrame("GameTooltip","MountThisTooltip",nil,"GameTooltipTemplate");
-	MountThisTooltip:SetOwner( WorldFrame, "ANCHOR_NONE" );
-	MountThisTooltip:AddFontStrings(
-	MountThisTooltip:CreateFontString( "$parentTextLeft1", nil, "GameTooltipText" ),
-	MountThisTooltip:CreateFontString( "$parentTextRight1", nil, "GameTooltipText" ) );
-
-
-	self:RegisterChatCommand("mountrandom", "MountRandom");
-	self:RegisterChatCommand("mount", "Mount");
-	--self:RegisterEvent("VARIABLES_LOADED");
-	--self:RegisterEvent("COMPANION_LEARNED");
-	--self:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
-	-- The event we should be looking into using is SKILL_LINES_CHANGED (it's after ADDON_LOADED and VARIABLES_LOADED)
-	--self:RegisterEvent("PLAYER_ALIVE");
-	--self:RegisterEvent("UNIT_SPELLCAST_START");
-	--self:RegisterEvent("UNIT_SPELLCAST_FAILED");
-	--self:RegisterEvent("UNIT_SPELLCAST_FAILED_QUIET");
-	--self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+	MountThis:RegisterChatCommand("mountrandom", "MountRandom");
+	MountThis:RegisterChatCommand("mount", "Mount");
+	MountThis:RegisterEvent("VARIABLES_LOADED");
+	MountThis:RegisterEvent("COMPANION_LEARNED");
+	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
+	MountThis:RegisterEvent("PLAYER_ALIVE");
 end
 
-
-function MountThis:UNIT_SPELLCAST_START(...)
-	local event, unit_casting, spell_name, spell_rank = ...;
-	if unit_casting ~= "player" then return false end;
-	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_START - "..unit_casting.." "..spell_name.." "..spell_rank); end
-	MountThis.mountBlock = true;
-	MountThis.mountSuccess = true;
-end
-function MountThis:UNIT_SPELLCAST_FAILED(...)
-	local event, unit_casting, spell_name, spell_rank = ...;
-	if unit_casting ~= "player" then return false end;
-	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED - "..unit_casting.." "..spell_name.." "..spell_rank); end
-	MountThis.mountBlock = false;
-	MountThis.mountSuccess = false;
-end
-function MountThis:UNIT_SPELLCAST_FAILED_QUIET(...)
-	local event, unit_casting, spell_name, spell_rank = ...;
-	if unit_casting ~= "player" then return false end;
-	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_FAILED_QUIET - "..unit_casting.." "..spell_name.." "..spell_rank); end
-	MountThis.mountBlock = false;
-	MountThis.mountSuccess = false;
-end
-function MountThis:UNIT_SPELLCAST_SUCCEEDED(...)
-	local event, unit_casting, spell_name, spell_rank = ...;
-	if unit_casting ~= "player" then return false end;
-	if type(MountThisSettings.Mounts[spell_name]) ~= "table" then return false end;
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: UNIT_SPELLCAST_SUCCEEDED - "..unit_casting.." "..spell_name.." "..spell_rank); end
-	MountThis.mountBlock = false;
-	MountThis.mountSuccess = true;
-end
-
-
-function MountThis:VARIABLES_LOADED()
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: VARIABLES_LOADED"); end
-	MountThisVariablesLoaded = true;
-	if MountThisSettings.debug >=1 then self:Communicate("Variables loaded"); end
+function MountThis:VARIABLES_LOADED(addon_name)
+	if addon_name == "MountThis" then
+		if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: VARIABLES_LOADED"); end
+		MountThisVariablesLoaded = true;
+		if MountThisSettings.debug >= 1 then MountThis:Communicate("Variables loaded"); end
+	end
 end
 
 function MountThis:COMPANION_LEARNED()
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: COMPANION_LEARNED"); end
+	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: COMPANION_LEARNED"); end
 	MountThis:UpdateMounts(true);
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
 	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
-	if MountThisVariablesLoaded then
-		if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) < tonumber(MountThis.version) then
-			MountThisSettings.version = MountThis.version;
-			if MountThisSettings.mountLand == nil then MountThisSettings.mountLand = MountThisSettingsDefaults.mountLand; end
-			if MountThisSettings.mountLandKey == nil then MountThisSettings.mountLandKey = MountThisSettingsDefaults.mountLandKey; end
-			if MountThisSettings.exitVehicle == nil then MountThisSettings.exitVehicle = MountThisSettingsDefaults.exitVehicle; end
-			if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
-			if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
-		end
-		-- MountThis:UpdateMounts(true);  -- Moved to PLAYER_ALIVE
+	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
+	if MountThisVariablesLoaded == false then return end
+	if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) ~= tonumber(MountThis.version) then
+		MountThisSettings.version = MountThis.version;
+		if MountThisSettings.mountLand == nil then MountThisSettings.mountLand = MountThisSettingsDefaults.mountLand; end
+		if MountThisSettings.mountLandKey == nil then MountThisSettings.mountLandKey = MountThisSettingsDefaults.mountLandKey; end
+		if MountThisSettings.exitVehicle == nil then MountThisSettings.exitVehicle = MountThisSettingsDefaults.exitVehicle; end
+		if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
+		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
 end
 
---[[--
-Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
-the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
-to see what our riding skill is an set variable speed mounts appropriately.
-
-A flag is set to indicate that we've updated the mounts once and don't want to do it every time someone "comes alive"
---]]--
 function MountThis:PLAYER_ALIVE()
-	if MountThisSettings.debug >= 3 then self:Communicate("EVENT: PLAYER_ALIVE"); end
-	if not MountThis.PlayerAlive then MountThis:UpdateMounts(true); MountThis.PlayerAlive = true; end
-  --[[-- Variable speed mounts like Death Knight Ebon Gryphon or Big Blizzard Bear don't get properly set at PLAYER_ENTERING_WORLD since 
-      the player doesn't have any skills loaded yet.  When the first PLAYER_ALIVE event fires on load, the riding skill has been loaded, so we can check
-      to see what our riding skill is and set variable speed mounts appropriately. --]]--
-  --MountThis:UpdateMounts(true);
+	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: PLAYER_ALIVE"); end
+	MountThis:UpdateMounts(true);
 end
 
 function MountThis:UpdateMounts(force_update)
 	if(force_update == nil) then force_update = false; end
-	if force_update and MountThisSettings.debug >= 1 then self:Communicate("Force updating mount information");
-	elseif MountThisSettings.debug >= 1 then self:Communicate("Using cached information from saved variables when possible");
+	if force_update and MountThisSettings.debug >= 1 then MountThis:Communicate("Force updating mount information");
+	elseif MountThisSettings.debug >= 1 then MountThis:Communicate("Using cached information from saved variables when possible");
 	end
 
-	-- Loop through all the mounts (yes, mounts are "companions" now)
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		-- For some reason, GetCompanionInfo can return a nil mount name.  This tries to stop that
 		if mount_name == nil then return end;
-		if MountThisSettings.debug >= 2 then self:Communicate("Found mount: "..mount_name.." at index "..companion_index); end
+		if MountThisSettings.debug >= 2 then MountThis:Communicate("Found mount: "..mount_name.." at index "..companion_index); end
 
 		-- Set up a temporary mount object
 		local current_mount =
 		{
 			name = mount_name;
 			index = companion_index;
-			speed = 0;
 			flying = false;
 			swimming = false;
 			land = true;	-- assume all mounts are at least land mounts
 			require_skill = "";
 			require_skill_level = 0;
-			riding_skill_based = false;
 			passengers = 0;
 			use_mount = true;
 			ahnqiraj = false;
 		}
 
-		-- Set up our local frame for reading
-		-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
-		MountThisTooltip:ClearLines()
-		MountThisTooltip:SetHyperlink("spell:"..spellID);
 		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
-		-- We make an assumption that the tooltip isn't changing
 		-- TODO: Add override to allow reinitialization (will help if they change text)
 		if force_update or not(type(MountThisSettings.Mounts[mount_name]) == "table") then
-			if force_update and MountThisSettings.debug >= 1 then self:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
+			if force_update and MountThisSettings.debug >= 1 then MountThis:Communicate("Forcing Mount: "..mount_name.." into mounts table"); end
 
-			local outland, northrend, ahnqiraj, extremely, very, require_skill, riding_skill_based, passengers;
-			-- Cycle through the lines of our tooltip to figure out the kind of mount
-			for tt_line = 1, MountThisTooltip:NumLines() do
-				local text = _G["MountThisTooltipTextLeft"..tt_line]:GetText();
+			local outland, northrend, ahnqiraj, require_skill, riding_skill_based, passengers;
+			local text = GetSpellDescription(spellID);
 
-				--[[--
-				Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
-				There are variable speed mounts like "Big Blizzard Bear" and skill mounts like the Flying Machine and Flying Carpet
-				Swimming mounts usually explicitly state that.
-				--]]--
-				for word in string.gmatch(text, "%a+") do
-					if word == "Outland" then outland = true;
-					elseif word == "Northrend" then northrend = true;
-					elseif word == "extremely" then extremely = true;
-					elseif word == "very" then very = true
-					elseif word == "swim" then current_mount.swimming = true;
-					end
-				end
-
-				-- Profession skill seems to come in more than one form
-				local skill_level, skill_type = string.match(text, "Requires (%d+) skill in (%a+)");
-				if skill_type ~= nil then
-					current_mount.require_skill = skill_type;
-					current_mount.require_skill_level = skill_level;
-				end
-				skill_level, skill_type = string.match(text, "Requires (%d+) (%a+) skill");
-				if skill_type ~= nil then
-					current_mount.require_skill = skill_type;
-					current_mount.require_skill_level = skill_level;
-				end
-
-				-- Let's see how many passengers we can take
-				passengers = string.match(text, "carry (%d+) passengers");
-				if passengers ~= nil then current_mount.passengers = 0 end;
-
-				-- Set the mount's flying ability
-				if northrend or outland then current_mount.flying = true end;
-				
-				-- Set up the speed of the mount
-				if current_mount.flying then
-					if extremely then current_mount.speed = 310;
-					elseif very then current_mount.speed = 280;
-					else current_mount.speed = 150;
-					end
-				else
-					if very then current_mount.speed = 100;
-					-- This may not be the case. I don't know about the turtle or other mounts that let you 'mount' at run speed
-					else current_mount.speed = 60;
-					end
-				end
-				-- Ahn'Qiraj mounts are unique in that they do not use the normal "speed" keywords
-				if string.match(text, "Ahn'Qiraj") ~= nil then
-					current_mount.ahnqiraj = true;
-					current_mount.speed = 100;
-				end
-
-				-- Not a huge stretch anymore, but I realized earlier versions did not catch all possibilities
-				if string.match(text, "depending on your Riding skill") ~= nil then
-					current_mount.riding_skill_based = true
-					--skill_level = MountThis:CheckSkill("Riding");
-					skill_level = MountThis:GetRidingSkill();
-					if MountThisSettings.debug >= 2 then self:Communicate("Variable speed mount "..mount_name.." and skill level "..tostring(skill_level)); end
-					--MountThis:Communicate(tostring(skill_level));
-					if current_mount.flying then
-						-- Tell me again how you learned a flying mount but I don't see you having the skill...
-						if skill_level == nil or skill_level == 0 then current_mount.speed = 0;
-						elseif skill_level >= 300 then current_mount.speed = 280;
-						elseif skill_level <= 225 then current_mount.speed = 150;
-						end
-					else
-						-- I believe even the normal land mounts have a riding skill requirement...
-						if skill_level == nil or skill_level == 0 then current_mount.speed = 0;
-						elseif skill_level == 75 then current_mount.speed = 60;
-						elseif skill_level >= 150 then current_mount.speed = 100;
-						end
-					end
+			--[[--
+			Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
+			Swimming mounts usually explicitly state that.
+			--]]--
+			for word in string.gmatch(text, "%a+") do
+				if word == "Outland" then outland = true;
+				elseif word == "Northrend" then northrend = true;
+				elseif word == "swim" then current_mount.swimming = true;
 				end
 			end
+
+			-- Profession skill seems to come in more than one form
+			local skill_level, skill_type = string.match(text, "Requires (%d+) skill in (%a+)");
+			if skill_type ~= nil then
+				current_mount.require_skill = skill_type;
+				current_mount.require_skill_level = skill_level;
+			end
+			skill_level, skill_type = string.match(text, "Requires (%d+) (%a+) skill");
+			if skill_type ~= nil then
+				current_mount.require_skill = skill_type;
+				current_mount.require_skill_level = skill_level;
+			end
+
+			-- Let's see how many passengers we can take
+			passengers = string.match(text, "carry (%d+) passengers");
+			if passengers ~= nil then current_mount.passengers = 0 end;
+
+			-- Ahn'Qiraj mounts are unique in that they do not use the normal "speed" keywords
+			if string.match(text, "Ahn'Qiraj") ~= nil then
+				current_mount.ahnqiraj = true;
+				current_mount.speed = 100;
+			end
+
+			-- Set the mount's flying ability
+			if northrend or outland then current_mount.flying = true end;
 
 			-- We have the mount in the table already. Use the saved use_mount value (check for nils, just in case)
 			if MountThisSettings.Mounts[mount_name] ~= nil then
@@ -530,51 +415,40 @@ function MountThis:UpdateMounts(force_update)
 			-- I can't say I always know what the pattern matches will return...
 			--if MountThisSettings.debug >=1 and not force_update then
 			if MountThisSettings.debug >=3 then
-				self:Communicate("Mount flags...");
-				self:Communicate("- northrend: "..tostring(northrend));
-				self:Communicate("- outland: "..tostring(outland));
-				self:Communicate("- ahn'qiraj: "..tostring(ahnqiraj));
-				self:Communicate("- swimming: "..tostring(swimming));
-				self:Communicate("- extremely: "..tostring(extremely));
-				self:Communicate("- very: "..tostring(very));
-				self:Communicate("- require_skill: "..tostring(require_skill));
-				self:Communicate("- require_skill_level: "..tostring(require_skill_level));
-				self:Communicate("- riding_skill_based: "..tostring(riding_skill_based));
-				self:Communicate("- passengers: "..tostring(passengers));
-				self:Communicate("- use_mount: "..tostring(current_mount.use_mount));
+				MountThis:Communicate("Mount flags...");
+				MountThis:Communicate("- ahn'qiraj: "..tostring(ahnqiraj));
+				MountThis:Communicate("- swimming: "..tostring(swimming));
+				MountThis:Communicate("- require_skill: "..tostring(require_skill));
+				MountThis:Communicate("- require_skill_level: "..tostring(require_skill_level));
+				MountThis:Communicate("- riding_skill_based: "..tostring(riding_skill_based));
+				MountThis:Communicate("- passengers: "..tostring(passengers));
+				MountThis:Communicate("- use_mount: "..tostring(current_mount.use_mount));
 			end
 
 			if MountThisSettings.debug >=4 then
-				self:Communicate("Current mount info..."..tostring(mount_name));
-				self:Communicate("- name: "..tostring(current_mount.name));
-				self:Communicate("- index: "..tostring(current_mount.index));
-				self:Communicate("- speed: "..tostring(current_mount.speed));
-				self:Communicate("- flying: "..tostring(current_mount.flying));
-				self:Communicate("- require_skill: "..tostring(current_mount.require_skill));
-				self:Communicate("- require_skill_level: "..tostring(current_mount.require_skill_level));
-				self:Communicate("- riding_skill_based: "..tostring(current_mount.riding_skill_based));
-				self:Communicate("- passengers: "..tostring(current_mount.passengers));
-				self:Communicate("- use_mount: "..tostring(current_mount.use_mount));
-				self:Communicate("- ahn'qiraj: "..tostring(current_mount.ahnqiraj));
+				MountThis:Communicate("Current mount info..."..tostring(mount_name));
+				MountThis:Communicate("- name: "..tostring(current_mount.name));
+				MountThis:Communicate("- index: "..tostring(current_mount.index));
+				MountThis:Communicate("- flying: "..tostring(current_mount.flying));
+				MountThis:Communicate("- require_skill: "..tostring(current_mount.require_skill));
+				MountThis:Communicate("- require_skill_level: "..tostring(current_mount.require_skill_level));
+				MountThis:Communicate("- passengers: "..tostring(current_mount.passengers));
+				MountThis:Communicate("- use_mount: "..tostring(current_mount.use_mount));
+				MountThis:Communicate("- ahn'qiraj: "..tostring(current_mount.ahnqiraj));
 			end
 
 			-- Most errors indicating this line are tooltip parse errors or logic errors for skill/speed
 			MountThisSettings.Mounts[mount_name] = current_mount;
 		end
-		if MountThisSettings.debug >=2 then self:Communicate("Setting the index for mount: "..mount_name.." to "..companion_index); end
+		if MountThisSettings.debug >=2 then MountThis:Communicate("Setting the index for mount: "..mount_name.." to "..companion_index); end
 		MountThisSettings.Mounts[mount_name].index = companion_index;
-		--end -- Nil mount name???
 	end
-	-- TODO: Check to see if we can hide the tooltip by default without affecting the information OR make it appear off-screen
-	-- if MountThisSettings.debug >=2 then self:Communicate("Hiding the tooltip frame.  All done here."); end
-	-- MountThisTooltip:Hide();
 end
 
 function MountThis:ListMounts(request_short)
-	self:Communicate("ListMounts:");
+	MountThis:Communicate("ListMounts:");
 	for name, data in pairs(MountThisSettings.Mounts) do
-		self:Communicate("- "..name.." - fly: "..tostring(data.flying)..
-						" - "..tostring(data.speed).."%"..
+		MountThis:Communicate("- "..name.." - fly: "..tostring(data.flying)..
 						" - prof: "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
 						" - skill: "..tostring(data.riding_skill_based)..
 						" - pass: "..tostring(data.passengers));
@@ -586,24 +460,16 @@ end
 There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
 ]]--
---[[
-IsFlyableArea() handles most of the info we need to know including Krasus's Landing, the exit tunnel from Dalaran Sewers, and non-battle Wintergrasp.
-Also adding in Cold Weather Flying check will help most cases
-]]--
 function MountThis:Flyable()
-	local flyable, target = SecureCmdOptionParse("[flyable] true; false");
-	--The parser does not take into account Dalaran, Wintergrasp, or if you have Cold Weather Flying
-	if flyable == "true" and IsFlyableArea() then
-		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then
-			return true;
-		end
+	-- IsFlyableArea does not check if the player can fly, just if the zone is flagged for flying... except Wintergrasp
+	if IsFlyableArea() or (GetRealZoneText() == "Wintergrasp" and GetWintergraspWaitTime() ~= nil) then
+		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then return true; end
+		if GetCurrentMapContinent() == 1 or GetCurrentMapContinent() == 2 and GetSpellInfo("Flight Master's License") ~= nil then return true; end
 		return true;
 	end
-	if MountThisSettings.debug >= 4 then MountThis:Communicate("This is not a flyable area according to Blizzard") end
 	return false;
 end
 
--- Find the fastest random mount you can use (flying first)
 -- The shapeshift forms aren't counted in the random at this time
 -- TODO: Figure out how to create/use secure buttons to allow shapeshift forms
 function MountThis:MountRandom()
@@ -614,9 +480,6 @@ function MountThis:MountRandom()
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
 		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
-	-- elseif UnitClass("player") == "GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
-		-- if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
-		-- return MountThis:Dismount()
 	end
 
 	-- Try to summon a flying mount first, unless asked not to do so
@@ -641,21 +504,14 @@ function MountThis:MountRandom()
 	end
 	-- Also can't get on flying mounts when swimming.
 	if IsSwimming() then 
-		if MountThisSettings.debug >= 2 then
-			MountThis:Communicate("You're swimming, so we must select a land mount.");
-		end
+		if MountThisSettings.debug >= 2 then MountThis:Communicate("You're swimming, so we must select a land mount."); end
 		summon_flying = false;
 	end
 	
 	if MountThis:Flyable() and summon_flying then
-		if MountThis:Mount(MountThis:Random(true,310)) == true then return true; 
-		elseif MountThis:Mount(MountThis:Random(true,280)) == true then return true; 
-		elseif MountThis:Mount(MountThis:Random(true,150)) == true then return true; 
-		end
+		if MountThis:Mount(MountThis:Random(true)) == true then return true; end
 	end
-	if MountThis:Mount(MountThis:Random(false,100)) == true then return true;
-	elseif MountThis:Mount(MountThis:Random(false,60)) == true then return true; 
-	end
+	if MountThis:Mount(MountThis:Random(false)) == true then return true; end
 	return false;
 end
 
@@ -670,44 +526,20 @@ function MountThis:Mount(companionID)
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
 		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
-	-- elseif GetShapeshiftForm() ~= 0 and MountThisSettings.unShapeshift then
-		-- if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Shapeshifted: Dismounting'); end
-		-- return MountThis:Dismount()
 	end
 	
 	if companionID ~= nil and companionID ~= "" then
-		MountThis.mountSuccess = false;
+		--MountThis.mountSuccess = false;
 		CallCompanion(MOUNT, companionID);
 		MountThis.lastMountUsed = companionID;
 		if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount succeeded for "..tostring(companionID)); end
-		if MountThis.mountSuccess == false then
-			if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
-			return false;
-		end
+		--if MountThis.mountSuccess == false then
+			--if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
+			--return false;
+		--end
 		if MountThisSettings.debug >= 4 then MountThis:Communicate("Mounting succeeded for "..tostring(companionID)); end
 		return true;
 	end
-
-	-- Don's new code to try to yield to CallCompanion so we can get a return value
-	--if companionID ~= nil and companionID ~= "" then	-- nil would come from MountRandom "" would come from the command line
-	--
-	--	co = coroutine.create(function ()
-	--		frame:SetScript("OnEvent", function(self, event, ...)
-	--			return MountThis[event](self, ...); -- call one of the functions above
-	--		end);
-	--	)
-	--
-	--	MountThis.mountSuccess = false;
-	--	CallCompanion(MOUNT, companionID);
-	--	MountThis.lastMountUsed = companionID;
-	--	if MountThisSettings.debug >= 4 then MountThis:Communicate("Testing if mount succeeded for "..tostring(companionID)); end
-	--	if MountThis.mountSuccess == false then
-	--		if MountThisSettings.debug >= 4 then MountThis:Communicate("Failed to mount "..tostring(companionID)); end
-	--		return false;
-	--	end
-	--	if MountThisSettings.debug >= 4 then MountThis:Communicate("Mounting succeeded for "..tostring(companionID)); end
-	--	return true;
-	--end
 
 	if MountThisSettings.debug >= 4 then MountThis:Communicate("companionID not supplied"); end
 	return false;
@@ -729,14 +561,13 @@ end
 --[[--
 Return the name of random mount, given certain variables
 - rFlying: true/false
-- rSpeed: 0/60/100/280/310
 - rRequireSkill: Engineering/Tailoring
 - rRidingSkill: true/false
 - rPassengers: # of passengers
 --]]--
-function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPassengers)
+function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	if MountThisSettings.debug > 1 then
-		self:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
+		MountThis:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
 	end
 
 	local ZoneNames = { GetMapZones(4) } ;
@@ -757,7 +588,7 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 	-- This already makes me think I should rewrite the table structures...
 	local possible_mounts = {};
 	for mount_name in pairs(mount_table) do
-		if MountThisSettings.debug >= 3 then self:Communicate("Checking "..mount_name.." for use"); end
+		if MountThisSettings.debug >= 3 then MountThis:Communicate("Checking "..mount_name.." for use"); end
 		-- If we have it set to not use a mount, don't do anything else
 		if mount_table[mount_name].use_mount then
 			-- Easier to say it is valid and then invalidate it (coding-wise anyway)
@@ -766,19 +597,16 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 			-- Check each of the requirements to see if they're valid for this random search
 			-- If it's nil, then we don't care.  Otherwise, check the value
 			if rFlying ~= nil and rFlying ~= mount_table[mount_name].flying then 
-				if MountThisSettings.debug >= 5 then self:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); end
-				matches_requirements = false
-			elseif rSpeed ~= nil and rSpeed ~= mount_table[mount_name].speed then
-				if MountThisSettings.debug >= 5 then self:Communicate("Speed "..tostring(rSpeed).." and "..tostring(mount_table[mount_name].speed)); end
+				if MountThisSettings.debug >= 5 then MountThis:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); end
 				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
-				if MountThisSettings.debug >= 5 then self:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill));  end
-			matches_requirements = false
+				if MountThisSettings.debug >= 5 then MountThis:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill));  end
+				matches_requirements = false
 			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
-				if MountThisSettings.debug >= 5 then self:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); end
+				if MountThisSettings.debug >= 5 then MountThis:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); end
 				matches_requirements = false
 			elseif rPassengers ~= nil and rPassengers ~= mount_table[mount_name].passengers then
-				if MountThisSettings.debug >= 5 then self:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); end
+				if MountThisSettings.debug >= 5 then MountThis:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); end
 				matches_requirements = false 
 			            
 			-- Cold Weather Flying yet?
@@ -789,14 +617,14 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 				matches_requirements = false 
 			-- TODO: Debug this skill checking section
 			elseif mount_table[mount_name].required_skill ~= nil 
-				and MountThis:CheckSkill() < mount_table[mount_name].required_skill then
-				if MountThisSettings.debug >= 3 then self:Communicate("This mount needs a profession skill!"); end
+				and MountThis:CheckSkill(mount_table[mount_name].required_skill) < mount_table[mount_name].required_skill then
+				if MountThisSettings.debug >= 3 then MountThis:Communicate("This mount needs a profession skill!"); end
 				matches_requirements = false 
 			end
 
 			if matches_requirements then
 				if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
-					tinsert(possible_mounts, mount_table[mount_name].index);
+				tinsert(possible_mounts, mount_table[mount_name].index);
 			end
 		end
 	end
@@ -804,41 +632,24 @@ function MountThis:Random(rFlying, rSpeed, rRequireSkill, rRidingSkill, rPasseng
 	-- If we don't have any possible mounts, the result is nil
 	-- Hopefully anyone asking for a mount knows for what they're asking
 	if #possible_mounts == 0 then
-		if MountThisSettings.debug > 1 then self:Communicate("Your random mount query failed"); end
+		if MountThisSettings.debug > 1 then MountThis:Communicate("Your random mount query failed"); end
 		return nil;
 	end
 
---[[DEBUGGING CODE]]--
-
---MountThis.SwiftFlightFormButton = CreateFrame("Button", "SwiftFlightFormButton", UIParent, "SecureActionButtonTemplate");
---MountThis.SwiftFlightFormButton:setAttribute('type*', 'spell');
---MountThis.SwiftFlightFormButton:setAttribute('spell', 'Swift Flight Form');
-
---local shapeshift_form = "Path of Frost";
---if random(1) > 0 then shapeshift_form = "Horn of Winter"; end
---
---MountThisSecureButton:SetAttribute('type', 'spell');
---MountThisSecureButton:SetAttribute('spell', shapeshift_form);
---MountThisFrameText:SetText(shapeshift_form);
-
-	--[[END DEBUGGING CODE]]--
-
 	-- Allow the user to say they don't want the last used mount
-  if MountThisSettings.debug >= 3 then self:Communicate("dontUseLastMount: "..tostring(MountThisSettings.dontUseLastMount)..", lastMountUsed: "..tostring(MountThis.lastMountUsed)); end
+	if MountThisSettings.debug >= 3 then MountThis:Communicate("dontUseLastMount: "..tostring(MountThisSettings.dontUseLastMount)..", lastMountUsed: "..tostring(MountThis.lastMountUsed)); end
 	if #possible_mounts > 1 and MountThisSettings.dontUseLastMount and MountThis.lastMountUsed ~= nil then
 		for poss_index, mount_index in pairs(possible_mounts) do
 			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, poss_index) end
 		end
 	end
   
-  local pmindex = random(#possible_mounts)
+	local pmindex = random(#possible_mounts)
 	local chosen_mount = possible_mounts[pmindex];
-  if MountThisSettings.debug >= 3 then self:Communicate("PMIndex: "..tostring(pmindex)..", MountIndex: "..tostring(chosen_mount)); end
+	if MountThisSettings.debug >= 3 then MountThis:Communicate("PMIndex: "..tostring(pmindex)..", MountIndex: "..tostring(chosen_mount)); end
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
-    if MountThisSettings.debug >= 1 then 
-      self:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); 
-			end
-    return chosen_mount;
+	if MountThisSettings.debug >= 1 then MountThis:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); end
+	return chosen_mount;
 
 	--return possible_mounts[random(#possible_mounts)];
 end
@@ -848,41 +659,6 @@ function MountThis:CheckSkill(check_skill_name)
 	if MountThisSettings.debug >= 2 then MountThis:Communicate("Checking skill "..check_skill_name); end
 	local spellName = GetSpellInfo(check_skill_name);
 	if spellName ~= nil then return true; end
-	if MountThisSettings.debug > 1 then self:Communicate("Skill: "..check_skill_name.." - not found"); end
+	if MountThisSettings.debug > 1 then MountThis:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
-end
-
-function MountThis:GetRidingSkill()
-
-	skillType, spellId = GetSpellBookItemInfo("Apprentice Riding")
-	if(spellId~=nil) then return 75 end
-
-	skillType, spellId = GetSpellBookItemInfo("Journeyman Riding")
-	if(spellId~=nil) then return 150 end
-
-	skillType, spellId = GetSpellBookItemInfo("Expert Riding")
-	if(spellId~=nil) then return 225 end
-
-	skillType, spellId = GetSpellBookItemInfo("Artisan Riding")
-	if(spellId~=nil) then return 300 end
-
-	skillType, spellId = GetSpellBookItemInfo("Master Riding")
-	if(spellId~=nil) then return 375 end
-
-	return 0;
-end
-
--- Use this to debug a tooltip
-function MountThis:ToolTipDebug(spellID)
-	-- If you don't specify a spell on the command line, we'll use this one
-	if spellID == nil then spellID = 44151; end
-	-- GameTooltip_SetDefaultAnchor(MountThisTooltip, UIParent);
-	MountThisTooltip:ClearLines()
-	MountThisTooltip:SetHyperlink("spell:"..spellID);
-
-	for i = 1, MountThisTooltip:NumLines() do
-		local text = _G["MountThisTooltipTextLeft"..i]:GetText();
-		MountThis:Communicate(text);
-	end
-	-- MountThisTooltip:Hide();
 end
