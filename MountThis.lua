@@ -7,6 +7,7 @@ the new functions, even if they don't know.
 
 BINDING_HEADER_MOUNTTHIS = "MountThis";
 BINDING_NAME_MOUNTRANDOM = "Random Mount";
+--if NUM_COMPANIONS_PER_PAGE == nil then NUM_COMPANIONS_PER_PAGE = 12 end
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
 --MountThis.version = 0.97;
@@ -122,16 +123,16 @@ local options =
 					set = function(info, value) MountThisSettings.exitVehicle = value end,
 					width = 'full',
 				},
-				unShapeshift =
-				{
-					order = 3,
-					type = 'toggle',
-					name = 'Cancel Shapeshift',
-					desc = 'Make MountThis cancel a shapeshift form',
-					get = function() return MountThisSettings.unShapeshift end,
-					set = function(info, value) MountThisSettings.unShapeshift = value end,
-					width = 'full',
-				},
+				--unShapeshift =
+				--{
+				--	order = 3,
+				--	type = 'toggle',
+				--	name = 'Cancel Shapeshift',
+				--	desc = 'Make MountThis cancel a shapeshift form',
+				--	get = function() return MountThisSettings.unShapeshift end,
+				--	set = function(info, value) MountThisSettings.unShapeshift = value end,
+				--	width = 'full',
+				--},
 				mountLand =
 				{
 					order = 4,
@@ -173,28 +174,28 @@ local options =
                                             return MountThisSettings.mountLandKey
                                         end,
 				},
-				mounts = 
-				{
-					order = 6,
-					type = 'multiselect',
-					name = 'Mounts',
-					desc = '',
-					values = function(info)
-						local mount_names = {};
-						for mount_name in pairs(MountThisSettings.Mounts) do
-							mount_names[mount_name] = mount_name;
-						end
-						return mount_names;
-					end,
-					get = function(info, key)
-						return MountThisSettings.Mounts[key].use_mount;
-					end,
-					set = function(info, key, value)
-						MountThisSettings.Mounts[key].use_mount = value;
-						return MountThisSettings.Mounts[key].use_mount;
-					end,
-					width = 'full',
-				},
+				--mounts = 
+				--{
+				--	order = 6,
+				--	type = 'multiselect',
+				--	name = 'Mounts',
+				--	desc = '',
+				--	values = function(info)
+				--		local mount_names = {};
+				--		for mount_name in pairs(MountThisSettings.Mounts) do
+				--			mount_names[mount_name] = mount_name;
+				--		end
+				--		return mount_names;
+				--	end,
+				--	get = function(info, key)
+				--		return MountThisSettings.Mounts[key].use_mount;
+				--	end,
+				--	set = function(info, key, value)
+				--		MountThisSettings.Mounts[key].use_mount = value;
+				--		return MountThisSettings.Mounts[key].use_mount;
+				--	end,
+				--	width = 'full',
+				--},
 			},
 		},
 		Debugging =
@@ -275,7 +276,30 @@ local options =
 					func = function() MountThis:UpdateMounts(true) end,
 					--hidden = guiHidden,
 					width = 'full',
-				}
+				},
+				mounts = 
+				{
+					order = 7,
+					type = 'multiselect',
+					name = 'Mounts',
+					desc = '',
+					values = function(info)
+						local mount_names = {};
+						for mount_name in pairs(MountThisSettings.Mounts) do
+							mount_names[mount_name] = mount_name;
+						end
+						return mount_names;
+					end,
+					get = function(info, key)
+						return MountThisSettings.Mounts[key].use_mount;
+					end,
+					set = function(info, key, value)
+						MountThisSettings.Mounts[key].use_mount = value;
+						return MountThisSettings.Mounts[key].use_mount;
+					end,
+					width = 'full',
+				},
+
 			}
 		}
 	}
@@ -300,6 +324,7 @@ function MountThis:OnInitialize()
 	MountThis:RegisterEvent("COMPANION_LEARNED");
 	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD"); -- Good for everything except variable speed mounts like DK Gryphon or Big Blizzard Bear
 	MountThis:RegisterEvent("PLAYER_ALIVE");
+MountThis:SpellBookMountCheckboxes()
 end
 
 function MountThis:VARIABLES_LOADED(addon_name)
@@ -327,6 +352,7 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
+MountThis:SpellBookMountCheckboxes()
 end
 
 function MountThis:PLAYER_ALIVE()
@@ -359,6 +385,7 @@ function MountThis:UpdateMounts(force_update)
 			passengers = 0;
 			use_mount = true;
 			ahnqiraj = false;
+			spellID = spellID;
 		}
 
 		if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end;
@@ -406,10 +433,11 @@ function MountThis:UpdateMounts(force_update)
 			if northrend or outland then current_mount.flying = true end;
 
 			-- We have the mount in the table already. Use the saved use_mount value (check for nils, just in case)
+			-- Don't check for nils now. Nils indicate a "false"
 			if MountThisSettings.Mounts[mount_name] ~= nil then
-				if MountThisSettings.Mounts[mount_name].use_mount ~= nil then
+				--if MountThisSettings.Mounts[mount_name].use_mount ~= nil then
 					current_mount.use_mount = MountThisSettings.Mounts[mount_name].use_mount;
-				end
+				--end
 			end
 
 			-- I can't say I always know what the pattern matches will return...
@@ -661,4 +689,62 @@ function MountThis:CheckSkill(check_skill_name)
 	if spellName ~= nil then return true; end
 	if MountThisSettings.debug > 1 then MountThis:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
+end
+
+function MountThis_MountCheckButton(self, button, down)
+	local name = self:GetName()
+	ButtonNumber = strmatch(name, "%d+")
+	if ButtonNumber ~= nil then
+		--MountThis:Communicate("Adjusting checkbox: "..tostring(ButtonNumber).." on page "..SpellBook_GetCurrentPage())
+		_, MountName = GetCompanionInfo("MOUNT", ((SpellBook_GetCurrentPage()-1)*NUM_COMPANIONS_PER_PAGE)+ButtonNumber)
+		MountThisSettings.Mounts[MountName].use_mount = self:GetChecked()
+	end
+end
+
+function MountThis_UpdateCompanionFrame(self, event, ...)
+	--MountThis:Communicate("Trying to update: "..tostring(self).." "..tostring(event))
+	--This if statement is a test to make sure we only show the checkbuttons on the mounts, not the critters
+	--MountThis:Communicate("CompanionsFrame.mode: "..tostring(SpellBookCompanionsFrame.mode).." page: "..SpellBook_GetCurrentPage())
+	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
+		local CompanionButton = _G["SpellBookCompanionButton"..ButtonNumber]
+		local MountThisButton = _G["MountThisCheckButton"..ButtonNumber]
+		if SpellBookCompanionsFrame.mode == "MOUNT" then
+			_, MountName = GetCompanionInfo("MOUNT", ((SpellBook_GetCurrentPage()-1)*NUM_COMPANIONS_PER_PAGE)+ButtonNumber)
+			if MountName ~= nil then
+				MountThisButton:SetChecked(MountThisSettings.Mounts[MountName].use_mount)
+				MountThisButton:Show()
+			else
+				MountThisButton:Hide()
+			end
+		else
+			MountThisButton:Hide()
+		end
+	end
+end
+
+-- Hooking to tab buttons 3-5 should make sure we know when we've clicked on a companion frame
+SpellBookFrameTabButton3:HookScript("OnClick", MountThis_UpdateCompanionFrame)
+SpellBookFrameTabButton4:HookScript("OnClick", MountThis_UpdateCompanionFrame)
+SpellBookFrameTabButton5:HookScript("OnClick", MountThis_UpdateCompanionFrame)
+
+-- Need to hook to the page buttons too
+SpellBookPrevPageButton:HookScript("OnClick", MountThis_UpdateCompanionFrame)
+SpellBookNextPageButton:HookScript("OnClick", MountThis_UpdateCompanionFrame)
+
+-- Not sure we need this at the moment, but I'm leaving them for now :P
+SpellBookFrame:HookScript("OnShow", MountThis_UpdateCompanionFrame)
+SpellBookFrame:HookScript("OnHide", MountThis_UpdateCompanionFrame)
+
+
+function MountThis:SpellBookMountCheckboxes()
+	--MountThis:Communicate("Trying to update: "..tostring(event))
+	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
+		CompanionButton = _G["SpellBookCompanionButton"..ButtonNumber]
+		local frame = CreateFrame("CheckButton", "MountThisCheckButton"..ButtonNumber, _G["SpellBookCompanionButton"..ButtonNumber], "UICheckButtonTemplate")
+		frame:ClearAllPoints()
+		frame:SetPoint("TOPRIGHT", 0, 0)
+		frame:SetScale(.5)
+		frame:SetScript("OnClick", MountThis_MountCheckButton)
+	end
+	MountThis_UpdateCompanionFrame()
 end
