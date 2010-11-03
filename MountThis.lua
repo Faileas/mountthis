@@ -9,6 +9,7 @@ BINDING_HEADER_MOUNTTHIS = "MountThis";
 BINDING_NAME_MOUNTRANDOM = "Random Mount";
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
+-- svn:keywords Revision needs to be set, but not easy with TortoiseSVN on Windows
 MountThis.version = tonumber(strmatch("$Revision$", "%d+"));
 MountThis.reqVersion = MountThis.version;
 MountThis.optionsFrames = {};
