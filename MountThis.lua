@@ -314,7 +314,8 @@ function MountThis:PLAYER_REGEN_DISABLED()
 end
 function MountThis:UNIT_AURA()
 	spellID = MountParser:ParseMountFromBuff()
-	if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
+	--if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
+	if spellID ~= nil then MountThis:UpdateMounts() end
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
@@ -336,7 +337,7 @@ function MountThis:PLAYER_ALIVE()
 end
 
 function MountThis:UpdateMounts(force_update, clear_mounts)
-	if clear_mounts ~= nil then MountThisSettings.Mounts.wipe(); end
+	if clear_mounts ~= nil then MountThisSettings.Mounts = {}; end
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
@@ -449,7 +450,8 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
-	local inAhnQiraj = GetZoneText() == "Ahn'Qiraj";
+	local inAhnQiraj = nil
+	if GetZoneText() == "Ahn'Qiraj" then inAhnQiraj = true end
 	local ZoneNames = { GetMapZones(4) } ;
 	for index, zoneName in pairs(ZoneNames) do 
 		if zoneName == GetZoneText() then inNorthrend = true; end 
@@ -471,10 +473,9 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 
 			-- Check each of the requirements to see if they're valid for this random search
 			if IsUsableSpell(mount_table[mount_name].spellID) == nil then	-- This should fix the swimming issue
-				MountThis:Communicate("Not a usable spell: "..mount_name)
 				matches_requirements = false
-			elseif rFlying ~= true and mount_table[mount_name].flying == true then 
-				matches_requirements = false
+			--elseif rFlying ~= true and mount_table[mount_name].flying == true then 
+			--	matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
 				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
@@ -483,7 +484,6 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 				matches_requirements = false
 			elseif rPassengers ~= nil and rPassengers ~= mount_table[mount_name].passengers then
 				matches_requirements = false 
-			            
 			-- Cold Weather Flying yet?
 			elseif inNorthrend and not canFlyInNorthrend and rFlying == true then
 				matches_requirements = false
@@ -518,7 +518,6 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	if #possible_mounts == 0 then return nil; end
 
 	-- Allow the user to say they don't want the last used mount
-	if MountThisSettings.debug >= 3 then MountThis:Communicate("dontUseLastMount: "..tostring(MountThisSettings.dontUseLastMount)..", lastMountUsed: "..tostring(MountThis.lastMountUsed)); end
 	if #possible_mounts > 1 and MountThisSettings.dontUseLastMount and MountThis.lastMountUsed ~= nil then
 		for poss_index, mount_index in pairs(possible_mounts) do
 			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, poss_index) end
