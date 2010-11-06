@@ -10,7 +10,8 @@ function MountParser:ParseMount(companion_index, spellID)
 	if companion_index ~= nil then
 		_,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 	end
-	local spellID, land, sea, air = MountParser:ParseMountFromBuff()
+	local buffSpellID, land, sea, air = MountParser:ParseMountFromBuff()
+	if spellID == nil then spellID = buffSpellID end
 	if spellID == nil then return nil end	-- No spellID? Well, what the hell are we parsing?
 
 	if mount_name == nil then mount_name = GetSpellInfo(spellID) end
