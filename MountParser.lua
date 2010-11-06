@@ -1,10 +1,19 @@
 ﻿MountParser = LibStub("LibMounts-1.0")
 if MountParser == nil then MountParser = {} end
 
-function MountParser:ParseMount(companion_index)
-	local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
-	
-	-- For some reason, GetCompanionInfo can return a nil mount name.  This tries to stop that
+CreateFrame("GameTooltip","MountParserTooltip",UIParent,"GameTooltipTemplate");
+MountParserTooltip:Hide()
+
+function MountParser:ParseMount(companion_index, spellID)
+
+	local text = ""
+	if companion_index ~= nil then
+		_,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
+	end
+	local spellID, land, sea, air = MountParser:ParseMountFromBuff()
+	if spellID == nil then return nil end	-- No spellID? Well, what the hell are we parsing?
+
+	if mount_name == nil then mount_name = GetSpellInfo(spellID) end
 	if mount_name == nil then return end;
 
 	-- Set up a temporary mount object
@@ -26,15 +35,22 @@ function MountParser:ParseMount(companion_index)
 	-- If we have the GetMountInfo function from LibMount, use it
 	if MountParser.GetMountInfo then 
 		current_mount.land, current_mount.flying, current_mount.swimming, _, current_mount.zone, current_mount.passengers = LibStub("LibMounts-1.0"):GetMountInfo(spellID)
-		return current_mount
+		if current_mount.land ~= nil or current_mount.flying ~= nil and current_mount.swimming ~= nil then	-- LibMount must not have found a new mount
+			return current_mount
+		end
 	end
-	
-	-- No LibMount, so we do our own bastardized parsing
+
+	-- No LibMount or LibMount didn't find the mount, so we do our own bastardized parsing
 	local outland, northrend, ahnqiraj, require_skill, riding_skill_based, passengers;
 	local text = GetSpellDescription(spellID);
 
+	-- If we parsed from a buff, apply mount capability
+	if land then current_mount.land = true end
+	if air then current_mount.flying = true end
+	if sea then current_mount.swimming = true end
+
 	--[[--
-	Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
+	Pre-Cata: Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
 	Swimming mounts usually explicitly state that.
 	--]]--
 	for word in string.gmatch(text, "%a+") do
@@ -56,15 +72,12 @@ function MountParser:ParseMount(companion_index)
 		current_mount.require_skill_level = skill_level;
 	end
 
-	-- Let's see how many passengers we can take
 	passengers = string.match(text, "carry (%d+) passengers");
 	if passengers ~= nil then current_mount.passengers = 0 end;
 
-	-- Ahn'Qiraj mounts are unique in that they do not use the normal "speed" keywords
-	if string.match(text, "Ahn'Qiraj") ~= nil then
-		--current_mount.ahnqiraj = true;
-		current_mount.zone = "Temple of Ahn'Qiraj";
-	end
+	-- Check for known zone restrictions
+	if string.match(text, "Ahn'Qiraj") ~= nil then current_mount.zone = "Temple of Ahn'Qiraj"; end
+	if string.match(text, "Vashj'ir") ~= nil then current_mount.zone = "Vashj'ir"; end
 
 	-- Set the mount's flying ability
 	if northrend or outland then current_mount.flying = true end;
@@ -72,13 +85,41 @@ function MountParser:ParseMount(companion_index)
 	return current_mount
 end
 
-function MountParser:ParseMountBuff()
-	if not IsMounted() then return nil end
-	for i = 1, 10 do
-		local n,r,it,c,dt,d,et,s,is,sc,si = UnitBuff("player",i);
-		if n ~= nil then
-			ChatFrame1:AddMessage(n.." "..tostring(si))
+function MountParser:ParseMountFromBuff()
+	--if not IsMounted() then return nil end
+	
+	-- Build an array of mount spellIDs from the companion table
+	--local mount_ids = newtable()
+	local mount_ids = {}
+	for companion_index = 1, GetNumCompanions("MOUNT") do
+		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
+		tinsert(mount_ids, spellID)
+	end
+
+	GameTooltip_SetDefaultAnchor(MountParserTooltip, UIParent);
+
+	local land = nil
+	local flying = nil
+	local swimming = nil
+	for i = 1, BUFF_MAX_DISPLAY do
+		--local n,r,it,c,dt,d,et,s,is,sc,si,extra1 = UnitAura("player",i,"helpful");
+		local n,r,it,c,dt,d,et,s,is,sc,si,extra1 = UnitAura("player",i);
+		for index, spellID in pairs(mount_ids) do
+			if spellID == si then
+				MountParserTooltip:SetUnitAura("player", i)
+				for tt_line = 1, MountParserTooltip:NumLines() do
+					local text = _G["MountParserTooltipTextLeft"..tt_line]:GetText();
+					if text ~= n then
+						if string.find(text, 'ground') ~= nil then land = true end
+						if string.find(text, 'flight') ~= nil then flying = true end
+						if string.find(text, 'swim') ~= nil then swimming = true end
+					end
+				end
+				MountParserTooltip:Hide()
+				return spellID, land, flying, swimming
+			end
 		end
 	end
+	--MountParserTooltip:Hide()
 	return nil
 end
