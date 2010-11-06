@@ -23,8 +23,8 @@ function MountParser:ParseMount(companion_index, spellID)
 		name = mount_name;
 		spellID = spellID;
 		index = companion_index;
-		flying = nil;
-		swimming = nil;
+		--flying = nil;
+		--swimming = nil;
 		land = true;	-- assume all mounts are at least land mounts
 		require_skill = "";
 		require_skill_level = 0;
