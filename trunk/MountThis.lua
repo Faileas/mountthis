@@ -310,7 +310,7 @@ function MountThis:PLAYER_REGEN_ENABLED()
 	MountThis:RegisterEvent("UNIT_AURA");
 end
 function MountThis:PLAYER_REGEN_DISABLED()
-	MountThis:UnRegisterEvent("UNIT_AURA");
+	MountThis:UnregisterEvent("UNIT_AURA");
 end
 function MountThis:UNIT_AURA()
 	spellID = MountParser:ParseMountFromBuff()
@@ -341,7 +341,7 @@ function MountThis:UpdateMounts(force_update, clear_mounts)
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
 		-- We have the mount in the table already. Use the saved use_mount value
-		if current_mount == nil then MountThis:Communicate("Failed update on "..mount_name) end
+		if current_mount == nil then MountThis:Communicate("Failed update on "..mount_name); return end
 		if MountThisSettings.Mounts[mount_name] ~= nil then
 			current_mount.use_mount = MountThisSettings.Mounts[mount_name].use_mount;
 		end
