@@ -11,7 +11,7 @@ function MountParser:ParseMount(companion_index, spellID)
 		_,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 	end
 	local buffSpellID, land, air, sea = MountParser:ParseMountFromBuff()
-	if spellID == nil then spellID = buffSpellID end
+	if spellID == nil then	spellID = buffSpellID end
 	if spellID == nil then return nil end	-- No spellID? Well, what the hell are we parsing?
 
 	if mount_name == nil then mount_name = GetSpellInfo(spellID) end
@@ -34,8 +34,8 @@ function MountParser:ParseMount(companion_index, spellID)
 	}
 
 	-- If we have the GetMountInfo function from LibMount, use it
-	if MountParser.GetMountInfo then 
-		current_mount.land, current_mount.flying, current_mount.swimming, _, current_mount.zone, current_mount.passengers = LibStub("LibMounts-1.0"):GetMountInfo(spellID)
+	if MountParser.GetMountInfo ~= nil then 
+		current_mount.land, current_mount.flying, current_mount.swimming, _, current_mount.zone, current_mount.passengers = MountParser:GetMountInfo(spellID)
 		if current_mount.land ~= nil or current_mount.flying ~= nil and current_mount.swimming ~= nil then	-- LibMount must not have found a new mount
 			return current_mount
 		end
@@ -46,9 +46,11 @@ function MountParser:ParseMount(companion_index, spellID)
 	local text = GetSpellDescription(spellID);
 
 	-- If we parsed from a buff, apply mount capability
-	if land then current_mount.land = true end
-	if air then current_mount.flying = true end
-	if sea then current_mount.swimming = true end
+	if spellID == buffSpellID then
+		if land then current_mount.land = true end
+		if air then current_mount.flying = true end
+		if sea then current_mount.swimming = true end
+	end
 
 	--[[--
 	Pre-Cata: Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
