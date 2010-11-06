@@ -5,9 +5,6 @@ BlazzingSaddles (Alestane) authors for the help they provided in understanding
 the new functions, even if they don't know.
 --]]--
 
-BINDING_HEADER_MOUNTTHIS = "MountThis";
-BINDING_NAME_MOUNTRANDOM = "Random Mount";
-
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
 -- svn:keywords Revision needs to be set, but not easy with TortoiseSVN on Windows
 MountThis.version = tonumber(strmatch("$Revision$", "%d+"));
@@ -39,25 +36,25 @@ local options =
 		list =
 		{
 			type = 'execute',
-			name = 'list',
-			desc = 'List all mounts known to MountThis',
+			name = MOUNTTHIS_OPTION_LIST,
+			desc = MOUNTTHIS_OPTION_LIST_DESC,
 			func = function() MountThis:ListMounts(true) end,
 		},
 		update = 
 		{
 			type = 'execute',
-			name = 'Update',
-			desc = 'Force update all mounts',
+			name = MOUNTTHIS_OPTION_FORCE_UPDATE,
+			desc = MOUNTTHIS_OPTION_FORCE_UPDATE_DESC,
 			func = function() MountThis:UpdateMounts(true) end,
 			width = 'full',
 		},
 		version =
 		{
 			type = 'execute',
-			name = 'Version',
-			desc = 'Show MountThis version',
+			name = MOUNTTHIS_OPTION_SHOW_VERSION,
+			desc = MOUNTTHIS_OPTION_SHOW_VERSION_DESC,
 			order = 2,
-			func = function() MountThis:Communicate("You are using MountThis version "..tostring(MountThis.version)) end,
+			func = function() MountThis:Communicate(MOUNTTHIS_OPTION_VERSION_STRING.." "..tostring(MountThis.version)) end,
 			--hidden = guiHidden,
 			width = 'full',
 		},
@@ -65,8 +62,8 @@ local options =
 		{
 			order = 1,
 			type = 'toggle',
-			name = 'Dismount',
-			desc = 'Make MountThis dismount if used while mounted instead of attempting to remount',
+			name = MOUNTTHIS_OPTION_DISMOUNT_IF_MOUNTED,
+			desc = MOUNTTHIS_OPTION_DISMOUNT_IF_MOUNTED_DESC,
 			get = function() return MountThisSettings.dismountIfMounted end,
 			set = function(info, value) MountThisSettings.dismountIfMounted = value end,
 			width = 'full',
@@ -81,16 +78,23 @@ local options =
 		config =
 		{
 			type = 'execute',
-			name = 'options',
-			desc = 'Open configuration options window',
+			name = MOUNTTHIS_OPTION_OPEN_CONFIG,
+			desc = MOUNTTHIS_OPTION_OPEN_CONFIG_DESC,
 			func = function() InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.General) end
 		},
 		debug =
 		{
 			type = 'execute',
-			name = 'options',
-			desc = 'Open configuration options window',
-			func = function() InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.Debugging) end
+			name = MOUNTTHIS_OPTION_OPEN_CONFIG,
+			desc = MOUNTTHIS_OPTION_OPEN_CONFIG_DEBUG_DESC,
+			func = function()
+				if MountThis.optionsFrames.Debugging ~= nil then
+					InterfaceOptionsFrame_OpenToCategory(MountThis.optionsFrames.Debugging)
+				else
+					--MountThis:Communicate("Debugging not enabled. Modify OnInitialize() to enable.")
+					DEFAULT_CHAT_FRAME:AddMessage("Debugging not enabled. Modify OnInitialize() to enable.")
+				end
+			end
 		},
 
 		-- These are the options for the Blizzard frames
@@ -106,8 +110,8 @@ local options =
 				{
 					order = 1,
 					type = 'toggle',
-					name = 'Dismount',
-					desc = 'Make MountThis dismount if used while mounted instead of attempting to remount',
+					name = MOUNTTHIS_OPTION_DISMOUNT_IF_MOUNTED,
+					desc = MOUNTTHIS_OPTION_DISMOUNT_IF_MOUNTED_DESC,
 					get = function() return MountThisSettings.dismountIfMounted end,
 					set = function(info, value) MountThisSettings.dismountIfMounted = value end,
 					width = 'full',
@@ -116,28 +120,18 @@ local options =
 				{
 					order = 2,
 					type = 'toggle',
-					name = 'Exit Vehicle',
-					desc = 'Make MountThis dismount if used while in a vehicle',
+					name = MOUNTTHIS_OPTION_EXIT_VEHICLE,
+					desc = MOUNTTHIS_OPTION_EXIT_VEHICLE_DESC,
 					get = function() return MountThisSettings.exitVehicle end,
 					set = function(info, value) MountThisSettings.exitVehicle = value end,
 					width = 'full',
 				},
-				--unShapeshift =
-				--{
-				--	order = 3,
-				--	type = 'toggle',
-				--	name = 'Cancel Shapeshift',
-				--	desc = 'Make MountThis cancel a shapeshift form',
-				--	get = function() return MountThisSettings.unShapeshift end,
-				--	set = function(info, value) MountThisSettings.unShapeshift = value end,
-				--	width = 'full',
-				--},
 				mountLand =
 				{
 					order = 4,
 					type = 'toggle',
-					name = 'Use modifier for non-flying mount in flyable zone',
-					desc = 'Use a modifier to make MountThis use a non-flying mount when a flyable zone',
+					name = MOUNTTHIS_OPTION_MOUNT_LAND,
+					desc = MOUNTTHIS_OPTION_MOUNT_LAND_DESC,
 					get = function() return MountThisSettings.mountLand end,
 					set = function(info, value) MountThisSettings.mountLand = value end,
 					width = 'full'
@@ -146,8 +140,8 @@ local options =
 				{
 					order = 5,
 					type = 'toggle',
-					name = 'Don\'t use last mount',
-					desc = 'MountThis will not use the last mount used',
+					name = MOUNTTHIS_OPTION_DONT_USE_LAST_MOUNT,
+					desc = MOUNTTHIS_OPTION_DONT_USE_LAST_MOUNT_DESC,
 					get = function() return MountThisSettings.dontUseLastMount end,
 					set = function(info, value) MountThisSettings.dontUseLastMount = value end,
 					width = 'full'
@@ -156,13 +150,13 @@ local options =
 				{
 					order = 6,
 					type = 'select',
-					name = 'Land Mount Key',
+					name = MOUNTTHIS_OPTION_MOUNT_LAND_KEY,
 					desc = '',
                                         values = function(info)
                                             local mount_land_keys = {};
-                                            mount_land_keys[0] = 'Alt';
-                                            mount_land_keys[1] = 'Control';
-                                            mount_land_keys[2] = 'Shift';
+                                            mount_land_keys[0] = MOUNTTHIS_ALT;
+                                            mount_land_keys[1] = MOUNTTHIS_CONTROL;
+                                            mount_land_keys[2] = MOUNTTHIS_SHIFT;
                                             return mount_land_keys end,
                                         get = function() return MountThisSettings.mountLandKey end,
                                         set = function(info, key)
@@ -173,35 +167,13 @@ local options =
                                             return MountThisSettings.mountLandKey
                                         end,
 				},
-				--mounts = 
-				--{
-				--	order = 6,
-				--	type = 'multiselect',
-				--	name = 'Mounts',
-				--	desc = '',
-				--	values = function(info)
-				--		local mount_names = {};
-				--		for mount_name in pairs(MountThisSettings.Mounts) do
-				--			mount_names[mount_name] = mount_name;
-				--		end
-				--		return mount_names;
-				--	end,
-				--	get = function(info, key)
-				--		return MountThisSettings.Mounts[key].use_mount;
-				--	end,
-				--	set = function(info, key, value)
-				--		MountThisSettings.Mounts[key].use_mount = value;
-				--		return MountThisSettings.Mounts[key].use_mount;
-				--	end,
-				--	width = 'full',
-				--},
 			},
 		},
 		Debugging =
 		{
 			cmdHidden = true,
 			type = 'group',
-			name = 'Debugging',
+			name = MOUNTTHIS_OPTION_DEBUG_HEADER,
 			desc = 'Debugging commands for MountThis',
 			order = -1,
 			args =
@@ -210,8 +182,8 @@ local options =
 				{
 					order = 1,
 					type = 'range',
-					name = 'Debug',
-					desc = 'Toggle debugging',
+					name = MOUNTTHIS_OPTION_DEBUG_LEVEL,
+					desc = MOUNTTHIS_OPTION_DEBUG_LEVEL_DESC,
 					min = 0,
 					max = 5,
 					step = 1,
@@ -223,8 +195,8 @@ local options =
 				{
 					order = 2,
 					type = 'range',
-					name = 'Debug Output to Chat Frame #',
-					desc = 'Select which chat frame you want to send debug output to.',
+					name = MOUNTTHIS_OPTION_CHATFRAME,
+					desc = MOUNTTHIS_OPTION_CHATFRAME_DESC,
 					min = 1,
 					max = NUM_CHAT_WINDOWS,
 					step = 1,
@@ -235,12 +207,12 @@ local options =
 				chatFramenum =
 				{
 					type = 'execute',
-					name = 'Chat Frame Number',
-					desc = 'Show MountThis version',
+					name = MOUNTTHIS_OPTION_CHATFRAME_IDENTIFY,
+					desc = MOUNTTHIS_OPTION_CHATFRAME_IDENTIFY_DESC,
 					order = 3,
 					func = function() 
 						for i = 1, NUM_CHAT_WINDOWS do
-							getglobal("ChatFrame"..i):AddMessage("This is chatFrame"..i, 255, 255, 255, 0);
+							getglobal("ChatFrame"..i):AddMessage(MOUNTTHIS_OPTION_CHATFRAME_IDENTIFY_STRING..i, 255, 255, 255, 0);
 						end 
 					end,
 					--hidden = guiHidden,
@@ -249,18 +221,18 @@ local options =
 				version =
 				{
 					type = 'execute',
-					name = 'Version',
-					desc = 'Show MountThis version',
+					name = MOUNTTHIS_OPTION_SHOW_VERSION,
+					desc = MOUNTTHIS_OPTION_SHOW_VERSION_DESC,
 					order = 4,
-					func = function() MountThis:Communicate("You are using MountThis version " .. MountThis.version) end,
+					func = function() MountThis:Communicate(MOUNTTHIS_OPTION_VERSION_STRING.." " .. MountThis.version) end,
 					--hidden = guiHidden,
 					width = 'full',
 				},
 				list = 
 				{
 					type = 'execute',
-					name = 'List',
-					desc = 'List all mounts known to MountThis',
+					name = MOUNTTHIS_OPTION_LIST,
+					desc = MOUNTTHIS_OPTION_LIST_DESC,
 					order = 5,
 					func = function() MountThis:ListMounts(true) end,
 					--hidden = guiHidden,
@@ -269,8 +241,8 @@ local options =
 				update = 
 				{
 					type = 'execute',
-					name = 'Update',
-					desc = 'Force update all mounts',
+					name = MOUNTTHIS_OPTION_FORCE_UPDATE,
+					desc = MOUNTTHIS_OPTION_FORCE_UPDATE_DESC,
 					order = 6,
 					func = function() MountThis:UpdateMounts(true) end,
 					--hidden = guiHidden,
@@ -280,7 +252,7 @@ local options =
 				{
 					order = 7,
 					type = 'multiselect',
-					name = 'Mounts',
+					name = MOUNTTHIS_OPTION_MOUNTS_HEADER,
 					desc = '',
 					values = function(info)
 						local mount_names = {};
@@ -304,9 +276,7 @@ local options =
 	}
 }
 
--- This function could be used to make comments when summoning if I was so inclined
 function MountThis:Communicate(str)
-	-- Do this because Marinna is a noob
 	if MountThisSettings.chatFrame == nil then MountThisSettings.chatFrame = MountThisSettingsDefaults.chatFrame; end
 	self:Print(getglobal("ChatFrame"..MountThisSettings.chatFrame), str);
 end
@@ -315,7 +285,7 @@ function MountThis:OnInitialize()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("MountThis", options, {"MountThis"});
 	local ACD3 = LibStub("AceConfigDialog-3.0");
 	MountThis.optionsFrames.General = ACD3:AddToBlizOptions('MountThis', nil, nil, 'General');
-	MountThis.optionsFrames.Debugging = ACD3:AddToBlizOptions('MountThis', 'Debugging', 'MountThis', 'Debugging');
+	--MountThis.optionsFrames.Debugging = ACD3:AddToBlizOptions('MountThis', 'Debugging', 'MountThis', 'Debugging');
 
 	MountThis:RegisterChatCommand("mountrandom", "MountRandom");
 	MountThis:RegisterChatCommand("mount", "Mount");
@@ -323,25 +293,32 @@ function MountThis:OnInitialize()
 	MountThis:RegisterEvent("COMPANION_LEARNED");
 	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD");
 	MountThis:RegisterEvent("PLAYER_ALIVE");
+	MountThis:RegisterEvent("UNIT_AURA");
+	MountThis:RegisterEvent("PLAYER_REGEN_ENABLED");
+	MountThis:RegisterEvent("PLAYER_REGEN_DISABLED");
 	MountThis:SpellBookMountCheckboxes()
 end
 
 function MountThis:VARIABLES_LOADED(addon_name)
-	if addon_name == "MountThis" then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: VARIABLES_LOADED"); end
-		MountThisVariablesLoaded = true;
-		if MountThisSettings.debug >= 1 then MountThis:Communicate("Variables loaded"); end
-	end
+	if addon_name == "MountThis" then MountThisVariablesLoaded = true; end
 end
 
 function MountThis:COMPANION_LEARNED()
-	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: COMPANION_LEARNED"); end
 	MountThis:UpdateMounts(true);
+end
+function MountThis:PLAYER_REGEN_ENABLED()
+	MountThis:RegisterEvent("UNIT_AURA");
+end
+function MountThis:PLAYER_REGEN_DISABLED()
+	MountThis:UnRegisterEvent("UNIT_AURA");
+end
+function MountThis:UNIT_AURA()
+	spellID = MountParser:ParseMountFromBuff()
+	if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
 	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
-	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: PLAYER_ENTERING_WORLD"); end
 	if MountThisVariablesLoaded == false then return end
 	if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) ~= tonumber(MountThis.version) then
 		MountThisSettings.version = MountThis.version;
@@ -351,36 +328,35 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
-MountThis:SpellBookMountCheckboxes()
+	MountThis:SpellBookMountCheckboxes()
 end
 
 function MountThis:PLAYER_ALIVE()
-	if MountThisSettings.debug >= 3 then MountThis:Communicate("EVENT: PLAYER_ALIVE"); end
 	MountThis:UpdateMounts(true);
 end
 
-function MountThis:UpdateMounts(force_update)
+function MountThis:UpdateMounts(force_update, clear_mounts)
+	if clear_mounts ~= nil then MountThisSettings.Mounts.wipe(); end
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
 		-- We have the mount in the table already. Use the saved use_mount value
+		if current_mount == nil then MountThis:Communicate("Failed update on "..mount_name) end
 		if MountThisSettings.Mounts[mount_name] ~= nil then
 			current_mount.use_mount = MountThisSettings.Mounts[mount_name].use_mount;
 		end
 		MountThisSettings.Mounts[mount_name] = current_mount
 	end
-
 end
 
 function MountThis:ListMounts(request_short)
-	MountThis:Communicate("ListMounts:");
+	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
 	for name, data in pairs(MountThisSettings.Mounts) do
 		MountThis:Communicate("- "..name..
-						" - use: "..tostring(data.use_mount)..
-						" - fly: "..tostring(data.flying)..
-						" - prof: "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
-						" - skill: "..tostring(data.riding_skill_based)..
-						" - pass: "..tostring(data.passengers));
+			" - "..MOUNTTHIS_LIST_USE_MOUNT..": "..tostring(data.use_mount)..
+			" - "..MOUNTTHIS_LIST_FLYING..": "..tostring(data.flying)..
+			" - "..MOUNTTHIS_LIST_PROFESSION..": "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
+			" - "..MOUNTTHIS_LIST_PASSENGERS..": "..tostring(data.passengers));
 	end
 end
 
@@ -391,9 +367,9 @@ If you receive an error of "You can't use that here", leave the subzone and retu
 ]]--
 function MountThis:Flyable()
 	-- IsFlyableArea does not check if the player can fly, just if the zone is flagged for flying... except Wintergrasp
-	if IsFlyableArea() or (GetRealZoneText() == "Wintergrasp" and GetWintergraspWaitTime() ~= nil) then
-		if GetCurrentMapContinent() == 4 and GetSpellInfo("Cold Weather Flying") ~= nil then return true; end
-		if GetCurrentMapContinent() == 1 or GetCurrentMapContinent() == 2 and GetSpellInfo("Flight Master's License") ~= nil then return true; end
+	if IsFlyableArea() or (GetRealZoneText() == MOUNTTHIS_WINTERGRASP and GetWintergraspWaitTime() ~= nil) then
+		if GetCurrentMapContinent() == 4 and GetSpellInfo(MOUNTTHIS_COLD_WEATHER_FLYING) ~= nil then return true; end
+		if GetCurrentMapContinent() == 1 or GetCurrentMapContinent() == 2 and GetSpellInfo(MOUNTTHIS_FLIGHT_MASTERS_LICENSE) ~= nil then return true; end
 		return true;
 	end
 	return false;
@@ -404,10 +380,8 @@ end
 function MountThis:MountRandom()
 	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
 	if IsMounted() and MountThisSettings.dismountIfMounted then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Mounted: Dismounting'); end
 		return MountThis:Dismount() 
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
 	end
 
@@ -416,23 +390,13 @@ function MountThis:MountRandom()
 	
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
 	if MountThisSettings.mountLand == true then
-		if MountThisSettings.debug >= 2 then
-			MountThis:Communicate('MountLandKey set to '..tostring(MountThisSettings.mountLandKey));
-			MountThis:Communicate("Alt: "..tostring(IsAltKeyDown()).." Control: "..tostring(IsControlKeyDown()).. " Shift: "..tostring(IsShiftKeyDown()));
-		end
-		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then
-			summon_flying = false
-		elseif MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then
-			summon_flying = false
-		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then
-			summon_flying = false
+		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false
+		elseif MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false
+		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false
 		end
 	end
-	-- Also can't get on flying mounts when swimming.
-	if IsSwimming() then 
-		if MountThisSettings.debug >= 2 then MountThis:Communicate("You're swimming, so we must select a land mount."); end
-		summon_flying = false;
-	end
+	-- Also can't get on flying mounts when swimming. Not true, but how do we check for being near the top of the water?
+	if IsSwimming() then summon_flying = false; end
 	
 	if MountThis:Flyable() and summon_flying then
 		if MountThis:Mount(MountThis:Random(true)) == true then return true; end
@@ -443,24 +407,19 @@ end
 
 -- Give a mount ID and I'll use it, otherwise, it's a random mount
 function MountThis:Mount(companionID)
-	if MountThisSettings.debug >= 4 then MountThis:Communicate("Trying to mount "..tostring(companionID)); end
-
 	-- Do the dismount dance if we need to before we even bother with the rest of this stuff
 	if IsMounted() and MountThisSettings.dismountIfMounted then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is Mounted: Dismounting'); end
 		return MountThis:Dismount() 
 	elseif CanExitVehicle() and MountThisSettings.exitVehicle then
-		if MountThisSettings.debug >= 3 then MountThis:Communicate('Is in Vehicle: Dismounting'); end
 		return MountThis:Dismount()
 	end
-	
+
 	if companionID ~= nil and companionID ~= "" then
 		CallCompanion(MOUNT, companionID);
 		MountThis.lastMountUsed = companionID;
 		return true;
 	end
 
-	if MountThisSettings.debug >= 4 then MountThis:Communicate("companionID not supplied"); end
 	return false;
 end
 
@@ -488,15 +447,13 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	end
 
 	if rFlying == false then rFlying = nil end
-	local ZoneNames = { GetMapZones(4) } ;
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
 	local inAhnQiraj = GetZoneText() == "Ahn'Qiraj";
+	local ZoneNames = { GetMapZones(4) } ;
 	for index, zoneName in pairs(ZoneNames) do 
-		if zoneName == GetZoneText() then 
-			inNorthrend = true; 
-		end 
+		if zoneName == GetZoneText() then inNorthrend = true; end 
 	end
 	if rFlying == true and inNorthrend == true then
 		if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
@@ -508,7 +465,6 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	-- This already makes me think I should rewrite the table structures...
 	local possible_mounts = {};
 	for mount_name in pairs(mount_table) do
-		if MountThisSettings.debug >= 3 then MountThis:Communicate("Checking "..mount_name.." for use"); end
 		-- If we have it set to not use a mount, don't do anything else
 		if mount_table[mount_name].use_mount == true then
 			-- Easier to say it is valid and then invalidate it (coding-wise anyway)
@@ -517,37 +473,31 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 			-- Check each of the requirements to see if they're valid for this random search
 			-- If it's nil, then we don't care.  Otherwise, check the value
 			if rFlying ~= true and mount_table[mount_name].flying == true then 
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); end
 				matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("Flying "..tostring(rFlying).." and "..tostring(mount_table[mount_name].flying)); end
 				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("RequireSkill "..tostring(rRequireSkill).." and "..tostring(mount_table[mount_name].required_skill));  end
 				matches_requirements = false
 			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("RidingSkill "..tostring(rRidingSkill).." and "..tostring(mount_table[mount_name].riding_skill_based)); end
 				matches_requirements = false
 			elseif rPassengers ~= nil and rPassengers ~= mount_table[mount_name].passengers then
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("Passengers "..tostring(rPassengers).." and "..tostring(mount_table[mount_name].passengers)); end
 				matches_requirements = false 
 			            
 			-- Cold Weather Flying yet?
 			elseif inNorthrend and not canFlyInNorthrend and rFlying == true then
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("Flying requested, but in Northrend without CWF"); end
 				matches_requirements = false
 			-- Will this fix the AQ problem I've had?
 			elseif mount_table[mount_name].ahnqiraj == true and not inAhnQiraj then
 				if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF: Old AQ reference"); end
-				if mount_table[mount_name].zone == nil then mount_table[mount_name].zone = "Temple of Ahn'Qiraj" end
+				if mount_table[mount_name].zone == nil then mount_table[mount_name].zone = MOUNTTHIS_AHNQIRAJ end
 				matches_requirements = false
 			-- update to "zone restricted" mount determination
 			elseif mount_table[mount_name].zone ~= nil then
-				if mount_table[mount_name].zone == "Temple of Ahn'Qiraj" and not inAhnQiraj then
+				if mount_table[mount_name].zone == MOUNTTHIS_AHNQIRAJ and not inAhnQiraj then
 					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Ahn'Qiraj"); end
 					matches_requirements = false
 				end
-				if mount_table[mount_name].zone == "Vashj'ir" and not inVashjir then
+				if mount_table[mount_name].zone == MOUNTTHIS_VASHJIR and not inVashjir then
 					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
 					matches_requirements = false
 				end
@@ -555,25 +505,16 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 			elseif mount_table[mount_name].required_skill ~= nil 
 				and MountThis:CheckSkill(mount_table[mount_name].required_skill) < mount_table[mount_name].required_skill then
 				if MountThisSettings.debug >= 3 then MountThis:Communicate("This mount needs a profession skill!"); end
-				if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF RS"); end
 				matches_requirements = false
 			end
 
-			if matches_requirements then
-				if MountThisSettings.debug >= 2 then MountThis:Communicate(" - Added "..mount_name.." to potential mounts"); end
-				tinsert(possible_mounts, mount_table[mount_name].index);
-			end
-		else
-			if MountThisSettings.debug >= 3 then MountThis:Communicate(mount_name.." not selected for use"); end
+			if matches_requirements then tinsert(possible_mounts, mount_table[mount_name].index); end
 		end
 	end
 
 	-- If we don't have any possible mounts, the result is nil
 	-- Hopefully anyone asking for a mount knows for what they're asking
-	if #possible_mounts == 0 then
-		if MountThisSettings.debug > 1 then MountThis:Communicate("Your random mount query failed"); end
-		return nil;
-	end
+	if #possible_mounts == 0 then return nil; end
 
 	-- Allow the user to say they don't want the last used mount
 	if MountThisSettings.debug >= 3 then MountThis:Communicate("dontUseLastMount: "..tostring(MountThisSettings.dontUseLastMount)..", lastMountUsed: "..tostring(MountThis.lastMountUsed)); end
@@ -585,20 +526,14 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
   
 	local pmindex = random(#possible_mounts)
 	local chosen_mount = possible_mounts[pmindex];
-	if MountThisSettings.debug >= 3 then MountThis:Communicate("PMIndex: "..tostring(pmindex)..", MountIndex: "..tostring(chosen_mount)); end
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
-	if MountThisSettings.debug >= 1 then MountThis:Communicate("Choosing mount "..chosen_mount_name.." from "..tostring(#possible_mounts).." possible mounts."); end
 	return chosen_mount;
-
-	--return possible_mounts[random(#possible_mounts)];
 end
 
 -- Return the value of a specific skill, nil if you don't have it
 function MountThis:CheckSkill(check_skill_name)
-	if MountThisSettings.debug >= 2 then MountThis:Communicate("Checking skill "..check_skill_name); end
 	local spellName = GetSpellInfo(check_skill_name);
 	if spellName ~= nil then return true; end
-	if MountThisSettings.debug > 1 then MountThis:Communicate("Skill: "..check_skill_name.." - not found"); end
 	return nil;
 end
 
@@ -618,8 +553,10 @@ function MountThis_UpdateCompanionFrame(self, event, ...)
 		if SpellBookCompanionsFrame.mode == "MOUNT" then
 			_, MountName = GetCompanionInfo("MOUNT", ((SpellBook_GetCurrentPage()-1)*NUM_COMPANIONS_PER_PAGE)+ButtonNumber)
 			if MountName ~= nil then
-				MountThisButton:SetChecked(MountThisSettings.Mounts[MountName].use_mount)
-				MountThisButton:Show()
+				if MountThisSettings.Mounts[MountName] ~= nil then
+					MountThisButton:SetChecked(MountThisSettings.Mounts[MountName].use_mount)
+					MountThisButton:Show()
+				end
 			end
 		end
 	end
@@ -640,7 +577,6 @@ SpellBookFrame:HookScript("OnHide", MountThis_UpdateCompanionFrame)
 
 
 function MountThis:SpellBookMountCheckboxes()
-	--MountThis:Communicate("Trying to update: "..tostring(event))
 	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
 		local frame = CreateFrame("CheckButton", "MountThisCheckButton"..ButtonNumber, _G["SpellBookCompanionButton"..ButtonNumber], "UICheckButtonTemplate")
 		frame:ClearAllPoints()
