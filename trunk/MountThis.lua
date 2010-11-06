@@ -355,6 +355,7 @@ function MountThis:ListMounts(request_short)
 		MountThis:Communicate("- "..name..
 			" - "..MOUNTTHIS_LIST_USE_MOUNT..": "..tostring(data.use_mount)..
 			" - "..MOUNTTHIS_LIST_FLYING..": "..tostring(data.flying)..
+			" - "..MOUNTTHIS_LIST_SWIMMING..": "..tostring(data.swimming)..
 			" - "..MOUNTTHIS_LIST_PROFESSION..": "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
 			" - "..MOUNTTHIS_LIST_PASSENGERS..": "..tostring(data.passengers));
 	end
@@ -395,8 +396,6 @@ function MountThis:MountRandom()
 		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false
 		end
 	end
-	-- Also can't get on flying mounts when swimming. Not true, but how do we check for being near the top of the water?
-	if IsSwimming() then summon_flying = false; end
 	
 	if MountThis:Flyable() and summon_flying then
 		if MountThis:Mount(MountThis:Random(true)) == true then return true; end
@@ -458,7 +457,7 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 	if rFlying == true and inNorthrend == true then
 		if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
 	end
-	
+
 	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
 	mount_table = MountThisSettings.Mounts;
 	-- Create a temporary table that uses an integer index rather than dictionary
@@ -471,8 +470,10 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 			local matches_requirements = true;
 
 			-- Check each of the requirements to see if they're valid for this random search
-			-- If it's nil, then we don't care.  Otherwise, check the value
-			if rFlying ~= true and mount_table[mount_name].flying == true then 
+			if IsUsableSpell(mount_table[mount_name].spellID) == nil then	-- This should fix the swimming issue
+				MountThis:Communicate("Not a usable spell: "..mount_name)
+				matches_requirements = false
+			elseif rFlying ~= true and mount_table[mount_name].flying == true then 
 				matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
 				matches_requirements = false
