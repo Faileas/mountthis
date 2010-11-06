@@ -1,4 +1,4 @@
-﻿MountParser = LibStub("LibMounts-1.0")
+﻿if (IsAddOnLoaded("LibMounts-1.0")) then MountParser = LibStub("LibMounts-1.0") end
 if MountParser == nil then MountParser = {} end
 
 CreateFrame("GameTooltip","MountParserTooltip",UIParent,"GameTooltipTemplate");
