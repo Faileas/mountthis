@@ -5,6 +5,10 @@ BlazzingSaddles (Alestane) authors for the help they provided in understanding
 the new functions, even if they don't know.
 --]]--
 
+MOUNTTHIS_LAND = 0
+MOUNTTHIS_FLYING = 1
+MOUNTTHIS_SWIMMING = 2
+
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
 -- svn:keywords Revision needs to be set, but not easy with TortoiseSVN on Windows
 MountThis.version = tonumber(strmatch("$Revision$", "%d+"));
@@ -366,7 +370,6 @@ function MountThis:ListMounts(request_short)
 	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
 end
 
-
 --[[
 There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
@@ -395,17 +398,24 @@ function MountThis:MountRandom()
 	summon_flying = true;
 	
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
+	local alternateMount = nil
 	if MountThisSettings.mountLand == true then
-		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then summon_flying = false
-		elseif MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then summon_flying = false
-		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then summon_flying = false
+		if MountThisSettings.mountLandKey == 0 and IsAltKeyDown() then
+			alternateMount = true
+		elseif MountThisSettings.mountLandKey == 1 and IsControlKeyDown() then
+			alternateMount = true
+		elseif MountThisSettings.mountLandKey == 2 and IsShiftKeyDown() then
+			alternateMount = true
 		end
 	end
-	
-	if MountThis:Flyable() and summon_flying then
-		if MountThis:Mount(MountThis:Random(true)) == true then return true; end
+
+	if MountThis:Flyable() and alternateMount == nil then
+		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
 	end
-	if MountThis:Mount(MountThis:Random(false)) == true then return true; end
+	if IsSwimming() and alternateMount ~= nil then
+		if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
+	end
+	if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
 	return false;
 end
 
@@ -440,17 +450,22 @@ end
 
 --[[--
 Return the name of random mount, given certain variables
-- rFlying: true/false
+- rType: 0/1/2 (MOUNTTHIS_LAND/FLYING/SWIMMING)
 - rRequireSkill: Engineering/Tailoring
 - rRidingSkill: true/false
 - rPassengers: # of passengers
 --]]--
-function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
+function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	if MountThisSettings.debug > 1 then
 		MountThis:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
 	end
 
-	if rFlying == false then rFlying = nil end
+	local rFlying = nil
+	local rLand = nil
+	local rSwimming = nil
+	if rType == MOUNTTHIS_FLYING then rFlying = true end
+	if rType == MOUNTTHIS_LAND then rLand = true end
+	if rType == MOUNTTHIS_SWIMMING then rSwimming = true end
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
@@ -461,7 +476,7 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 		if zoneName == GetZoneText() then inNorthrend = true; end 
 	end
 	if rFlying == true and inNorthrend == true then
-		if MountThis:CheckSkill("Cold Weather Flying") ~= nil then canFlyInNorthrend = true; end
+		if MountThis:CheckSkill(MOUNTTHIS_COLD_WEATHER_FLYING) ~= nil then canFlyInNorthrend = true; end
 	end
 
 	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
@@ -481,6 +496,10 @@ function MountThis:Random(rFlying, rRequireSkill, rRidingSkill, rPassengers)
 			--elseif rFlying ~= true and mount_table[mount_name].flying == true then 
 			--	matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
+				matches_requirements = false
+			elseif rSwimming == true and mount_table[mount_name].swimming ~= true then 
+				matches_requirements = false
+			elseif rLand == true and mount_table[mount_name].land ~= true then 
 				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
 				matches_requirements = false
