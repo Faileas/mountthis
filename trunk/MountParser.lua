@@ -24,14 +24,8 @@ function MountParser:ParseMount(companion_index, spellID)
 		name = mount_name;
 		spellID = spellID;
 		index = companion_index;
-		--flying = nil;
-		--swimming = nil;
 		land = true;	-- assume all mounts are at least land mounts
-		--require_skill = "";
-		--require_skill_level = 0;
-		--passengers = 0;
 		use_mount = true;
-		--zone = nil;
 	}
 
 	-- If we have the GetMountInfo function from LibMount, use it
@@ -61,6 +55,7 @@ function MountParser:ParseMount(companion_index, spellID)
 	for word in string.gmatch(text, "%a+") do
 		if word == "Outland" then outland = true;
 		elseif word == "Northrend" then northrend = true;
+		elseif word == "Vashj'ir" then current_mount.swimming = true;
 		elseif word == "swim" then current_mount.swimming = true;
 		end
 	end
