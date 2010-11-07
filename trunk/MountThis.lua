@@ -342,11 +342,14 @@ function MountThis:UpdateMounts(force_update, clear_mounts)
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
 		-- We have the mount in the table already. Use the saved use_mount value
-		if current_mount == nil then MountThis:Communicate("Failed update on "..mount_name); return end
 		if MountThisSettings.Mounts[mount_name] ~= nil then
-			current_mount.use_mount = MountThisSettings.Mounts[mount_name].use_mount;
+			MountThisSettings.Mounts[mount_name].use_mount = current_mount.use_mount;
+			if current_mount.land ~= nil then MountThisSettings.Mounts[mount_name].land = current_mount.land end
+			if current_mount.flying ~= nil then MountThisSettings.Mounts[mount_name].flying = current_mount.flying end
+			if current_mount.swimming ~= nil then MountThisSettings.Mounts[mount_name].swimming = current_mount.swimming end
+		else
+			MountThisSettings.Mounts[mount_name] = current_mount
 		end
-		MountThisSettings.Mounts[mount_name] = current_mount
 	end
 end
 
@@ -360,6 +363,7 @@ function MountThis:ListMounts(request_short)
 			" - "..MOUNTTHIS_LIST_PROFESSION..": "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
 			" - "..MOUNTTHIS_LIST_PASSENGERS..": "..tostring(data.passengers));
 	end
+	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
 end
 
 
