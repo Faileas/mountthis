@@ -394,9 +394,6 @@ function MountThis:MountRandom()
 		return MountThis:Dismount()
 	end
 
-	-- Try to summon a flying mount first, unless asked not to do so
-	summon_flying = true;
-	
 	-- This is where we add the ability for modifier buttons to choose flying/slow mounts
 	local alternateMount = nil
 	if MountThisSettings.mountLand == true then
@@ -409,10 +406,17 @@ function MountThis:MountRandom()
 		end
 	end
 
+	-- Try to summon a flying mount first, unless asked not to do so
 	if MountThis:Flyable() and alternateMount == nil then
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
 	end
-	if IsSwimming() and alternateMount ~= nil then
+	if IsSwimming() then
+		if GetRealZoneText() == "Vashj'ir" then
+			if alternateMount ~= nil then
+				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
+			end
+			if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
+		end
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
 	end
 	if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
@@ -471,6 +475,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
 	local inAhnQiraj = nil
 	if GetZoneText() == "Ahn'Qiraj" then inAhnQiraj = true end
+	if GetRealZoneText() == "Vashj'ir" then inVashjir = true end
 	local ZoneNames = { GetMapZones(4) } ;
 	for index, zoneName in pairs(ZoneNames) do 
 		if zoneName == GetZoneText() then inNorthrend = true; end 
