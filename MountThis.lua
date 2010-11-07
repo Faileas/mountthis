@@ -597,6 +597,7 @@ end
 
 function MountThis_UpdateCompanionFrame(self, event, ...)
 	--This if statement is a test to make sure we only show the checkbuttons on the mounts, not the critters
+	if SpellBook_GetCurrentPage() == nil then return end
 	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
 		local MountThisButton = _G["MountThisCheckButton"..ButtonNumber]
 		MountThisButton:Hide()
