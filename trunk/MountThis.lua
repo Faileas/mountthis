@@ -334,6 +334,7 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
 	MountThis:SpellBookMountCheckboxes()
+	MountThis:UpdateMounts(true);
 end
 
 function MountThis:PLAYER_ALIVE()
@@ -406,15 +407,24 @@ function MountThis:MountRandom()
 		end
 	end
 
+	local inVashjir = nil
+	if GetRealZoneText() == "Vashj'ir" then inVashjir = true end
+	if GetRealZoneText() == "Kelp'thar Forest" then inVashjir = true end
+	if GetRealZoneText() == "Shimmering Expanse" then inVashjir = true end
+	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
+
 	-- Try to summon a flying mount first, unless asked not to do so
 	if MountThis:Flyable() and alternateMount == nil then
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
 	end
-	if IsSwimming() then
-		if GetRealZoneText() == "Vashj'ir" then
-			if alternateMount ~= nil then
+	if IsSwimming() == true then
+		if inVashjir == true then
+			if alternateMount == nil then
 				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
 			end
+			if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
+		end
+		if alternateMount == nil then
 			if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
 		end
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
@@ -506,8 +516,10 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 				matches_requirements = false
 			elseif rSwimming == true and mount_table[mount_name].swimming ~= true then 
 				matches_requirements = false
-			elseif rLand == true and mount_table[mount_name].land ~= true then 
-				matches_requirements = false
+			elseif rLand == true then
+				if mount_table[mount_name].land ~= true or mount_table[mount_name].flying == true or mount_table[mount_name].swimming == true then 
+					matches_requirements = false
+				end
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
 				matches_requirements = false
 			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
@@ -576,13 +588,6 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	local chosen_mount = possible_mounts[pmindex];
 	local _,chosen_mount_name = GetCompanionInfo("MOUNT",chosen_mount);
 	return chosen_mount;
-end
-
--- Return the value of a specific skill, nil if you don't have it
-function MountThis:CheckSkill(check_skill_name)
-	local spellName = GetSpellInfo(check_skill_name);
-	if spellName ~= nil then return true; end
-	return nil;
 end
 
 function MountThis_MountCheckButton(self, button, down)
