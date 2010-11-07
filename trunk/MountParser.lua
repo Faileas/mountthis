@@ -26,12 +26,12 @@ function MountParser:ParseMount(companion_index, spellID)
 		index = companion_index;
 		--flying = nil;
 		--swimming = nil;
-		land = true;	-- assume all mounts are at least land mounts
-		require_skill = "";
-		require_skill_level = 0;
-		passengers = 0;
+		--land = true;	-- assume all mounts are at least land mounts
+		--require_skill = "";
+		--require_skill_level = 0;
+		--passengers = 0;
 		use_mount = true;
-		zone = nil;
+		--zone = nil;
 	}
 
 	-- If we have the GetMountInfo function from LibMount, use it
