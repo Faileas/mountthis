@@ -59,6 +59,18 @@ function MountParser:ParseMount(companion_index, spellID)
 		elseif word == "swim" then current_mount.swimming = true;
 		end
 	end
+	
+	-- Half-assed list of mounts that should fly. I think it should cover 90% of the mounts.
+	if string.match(mount_name, "Drake") or string.match(mount_name, "Nether Ray") or
+		string.match(mount_name, "Wyvern") or string.match(mount_name, "Hippogryph") or
+		string.match(mount_name, "Wyrm") or string.match(mount_name, "Gryphon") or
+		string.match(mount_name, "Rocket") or string.match(mount_name, "Wind Rider") or
+		string.match(mount_name, "Flying") or string.match(mount_name, "Dragonhawk") or
+		string.match(mount_name, "Nether Ray") or string.match(mount_name, "Wing") or
+		string.match(mount_name, "Frostbrood")
+		then
+		current_mount.flying = true
+	end
 
 	-- Profession skill seems to come in more than one form
 	local skill_level, skill_type = string.match(text, "Requires (%d+) skill in (%a+)");
