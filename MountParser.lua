@@ -7,15 +7,16 @@ MountParserTooltip:Hide()
 function MountParser:ParseMount(companion_index, spellID)
 
 	local text = ""
-	if companion_index ~= nil then
-		_,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
-	end
+	if companion_index ~= nil then _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index); end
+	
 	local buffSpellID, land, air, sea = MountParser:ParseMountFromBuff()
-	if spellID == nil then	spellID = buffSpellID end
+	if spellID == nil then spellID = buffSpellID end
 	if spellID == nil then return nil end	-- No spellID? Well, what the hell are we parsing?
 
 	if mount_name == nil then mount_name = GetSpellInfo(spellID) end
 	if mount_name == nil then return end;
+
+	if companion_index == nil then companion_index = MountParser:GetCompanionIndex(mount_name) end
 
 	-- Set up a temporary mount object
 	local current_mount =
@@ -56,6 +57,7 @@ function MountParser:ParseMount(companion_index, spellID)
 	Pre-Cata: Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
 	Swimming mounts usually explicitly state that.
 	--]]--
+	
 	for word in string.gmatch(text, "%a+") do
 		if word == "Outland" then outland = true;
 		elseif word == "Northrend" then northrend = true;
@@ -83,7 +85,7 @@ function MountParser:ParseMount(companion_index, spellID)
 	if string.match(text, "Vashj'ir") ~= nil then current_mount.zone = "Vashj'ir"; end
 
 	-- Set the mount's flying ability
-	if northrend or outland then current_mount.flying = true end;
+	if northrend ~= nil or outland ~= nil then current_mount.flying = true end;
 
 	return current_mount
 end
@@ -123,6 +125,13 @@ function MountParser:ParseMountFromBuff()
 			end
 		end
 	end
-	--MountParserTooltip:Hide()
 	return nil
+end
+
+function MountParser:GetCompanionIndex(mount_name)
+	if mount_name == nil then return nil end
+	for index = 1, GetNumCompanions("MOUNT") do
+		local _,name,spellID = GetCompanionInfo("MOUNT",index);
+		if mount_name == name then return index end
+	end
 end
