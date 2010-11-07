@@ -417,7 +417,7 @@ function MountThis:MountRandom()
 	if MountThis:Flyable() and alternateMount == nil then
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
 	end
-	if IsSwimming() == true then
+	if IsSwimming() == 1 or IsSwimming() == true then	-- WTF? nil/1? Why not nil/true?
 		if inVashjir == true then
 			if alternateMount == nil then
 				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
@@ -510,8 +510,6 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 			-- Check each of the requirements to see if they're valid for this random search
 			if IsUsableSpell(mount_table[mount_name].spellID) == nil then	-- This should fix the swimming issue
 				matches_requirements = false
-			--elseif rFlying ~= true and mount_table[mount_name].flying == true then 
-			--	matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
 				matches_requirements = false
 			elseif rSwimming == true and mount_table[mount_name].swimming ~= true then 
@@ -544,7 +542,6 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
 					matches_requirements = false
 				end
-			-- TODO: Debug this skill checking section
 			elseif mount_table[mount_name].required_skill ~= nil then
 				local prof1, prof2, arch = GetProfessions()
 				local req_skill = nil
