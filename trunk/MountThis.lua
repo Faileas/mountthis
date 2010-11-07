@@ -460,10 +460,6 @@ Return the name of random mount, given certain variables
 - rPassengers: # of passengers
 --]]--
 function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
-	if MountThisSettings.debug > 1 then
-		MountThis:Communicate("Random mount flags: "..tostring(rFlying).." "..tostring(rSpeed).." "..tostring(rRequireSkill).." "..tostring(rRidingSkill))
-	end
-
 	local rFlying = nil
 	local rLand = nil
 	local rSwimming = nil
@@ -475,13 +471,19 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
 	local inAhnQiraj = nil
 	if GetZoneText() == "Ahn'Qiraj" then inAhnQiraj = true end
+	-- Vashj'ir is 3 zones: Kelp'thar Forest, Shimmering Expanse, Abyssal Depths
 	if GetRealZoneText() == "Vashj'ir" then inVashjir = true end
+	if GetRealZoneText() == "Kelp'thar Forest" then inVashjir = true end
+	if GetRealZoneText() == "Shimmering Expanse" then inVashjir = true end
+	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
+	
 	local ZoneNames = { GetMapZones(4) } ;
 	for index, zoneName in pairs(ZoneNames) do 
 		if zoneName == GetZoneText() then inNorthrend = true; end 
 	end
 	if rFlying == true and inNorthrend == true then
-		if MountThis:CheckSkill(MOUNTTHIS_COLD_WEATHER_FLYING) ~= nil then canFlyInNorthrend = true; end
+		sType = GetSpellBookItemInfo(MOUNTTHIS_COLD_WEATHER_FLYING)
+		if sType == "SPELL" then canFlyInNorthrend = true end
 	end
 
 	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
@@ -531,10 +533,28 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 					matches_requirements = false
 				end
 			-- TODO: Debug this skill checking section
-			elseif mount_table[mount_name].required_skill ~= nil 
-				and MountThis:CheckSkill(mount_table[mount_name].required_skill) < mount_table[mount_name].required_skill then
-				if MountThisSettings.debug >= 3 then MountThis:Communicate("This mount needs a profession skill!"); end
-				matches_requirements = false
+			elseif mount_table[mount_name].required_skill ~= nil then
+				local prof1, prof2, arch = GetProfessions()
+				local req_skill = nil
+				if prof1 ~= nil then
+					local pName, _, pLevel = GetProfessionInfo(prof1)
+					if strlower(pName) == strlower(mount_table[mount_name].required_skill) then
+						if mount_table[mount_name].required_skill <= pLevel then req_skill = true end
+					end
+				end
+				if prof2 ~= nil then
+					local pName, _, pLevel = GetProfessionInfo(prof2)
+					if strlower(pName) == strlower(mount_table[mount_name].required_skill) then
+						if mount_table[mount_name].required_skill <= pLevel then req_skill = true end
+					end
+				end
+				if arch ~= nil then
+					local pName, _, pLevel = GetProfessionInfo(arch)
+					if strlower(pName) == strlower(mount_table[mount_name].required_skill) then
+						if mount_table[mount_name].required_skill <= pLevel then req_skill = true end
+					end
+				end
+				if req_skill == nil then matches_requirements = false end
 			end
 
 			if matches_requirements then tinsert(possible_mounts, mount_table[mount_name].index); end
