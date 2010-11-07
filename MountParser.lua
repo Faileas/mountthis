@@ -26,7 +26,7 @@ function MountParser:ParseMount(companion_index, spellID)
 		index = companion_index;
 		--flying = nil;
 		--swimming = nil;
-		--land = true;	-- assume all mounts are at least land mounts
+		land = true;	-- assume all mounts are at least land mounts
 		--require_skill = "";
 		--require_skill_level = 0;
 		--passengers = 0;
