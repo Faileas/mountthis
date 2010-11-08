@@ -349,6 +349,7 @@ function MountThis:UpdateMounts(force_update, clear_mounts)
 		-- We have the mount in the table already. Use the saved use_mount value
 		if MountThisSettings.Mounts[mount_name] ~= nil then
 			--MountThisSettings.Mounts[mount_name].use_mount = current_mount.use_mount;
+			if current_mount.spellID ~= nil then MountThisSettings.Mounts[mount_name].spellID = current_mount.spellID end
 			if current_mount.land ~= nil then MountThisSettings.Mounts[mount_name].land = current_mount.land end
 			if current_mount.flying ~= nil then MountThisSettings.Mounts[mount_name].flying = current_mount.flying end
 			if current_mount.swimming ~= nil then MountThisSettings.Mounts[mount_name].swimming = current_mount.swimming end
@@ -591,7 +592,11 @@ function MountThis_MountCheckButton(self, button, down)
 	ButtonNumber = strmatch(self:GetName(), "%d+")
 	if ButtonNumber ~= nil then
 		_, MountName = GetCompanionInfo("MOUNT", ((SpellBook_GetCurrentPage()-1)*NUM_COMPANIONS_PER_PAGE)+ButtonNumber)
-		MountThisSettings.Mounts[MountName].use_mount = self:GetChecked()
+		if self:GetChecked() ~= nil then
+			MountThisSettings.Mounts[MountName].use_mount = true
+		else
+			MountThisSettings.Mounts[MountName].use_mount = nil
+		end
 	end
 end
 
