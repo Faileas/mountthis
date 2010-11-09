@@ -308,6 +308,7 @@ function MountThis:VARIABLES_LOADED(addon_name)
 end
 
 function MountThis:COMPANION_LEARNED()
+	if MountThisVariablesLoaded == false then return end
 	MountThis:UpdateMounts(true);
 end
 function MountThis:PLAYER_REGEN_ENABLED()
@@ -317,6 +318,7 @@ function MountThis:PLAYER_REGEN_DISABLED()
 	MountThis:UnregisterEvent("UNIT_AURA");
 end
 function MountThis:UNIT_AURA()
+	if MountThisVariablesLoaded == false then return end
 	spellID = MountParser:ParseMountFromBuff()
 	--if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
 	if spellID ~= nil then MountThis:UpdateMounts() end
@@ -338,6 +340,7 @@ function MountThis:PLAYER_ENTERING_WORLD()
 end
 
 function MountThis:PLAYER_ALIVE()
+	if MountThisVariablesLoaded == false then return end
 	MountThis:UpdateMounts(true);
 end
 
