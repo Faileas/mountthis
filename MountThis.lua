@@ -308,7 +308,7 @@ function MountThis:VARIABLES_LOADED(addon_name)
 end
 
 function MountThis:COMPANION_LEARNED()
-	if MountThisVariablesLoaded == false then return end
+	--if MountThisVariablesLoaded ~= true then return end
 	MountThis:UpdateMounts(true);
 end
 function MountThis:PLAYER_REGEN_ENABLED()
@@ -318,7 +318,7 @@ function MountThis:PLAYER_REGEN_DISABLED()
 	MountThis:UnregisterEvent("UNIT_AURA");
 end
 function MountThis:UNIT_AURA()
-	if MountThisVariablesLoaded == false then return end
+	if MountThisVariablesLoaded ~= true then return end
 	spellID = MountParser:ParseMountFromBuff()
 	--if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
 	if spellID ~= nil then MountThis:UpdateMounts() end
@@ -326,7 +326,7 @@ end
 
 function MountThis:PLAYER_ENTERING_WORLD()
 	-- I do this to make sure variables get assigned correctly.  I don't know of another way at this point besides deleting old variables.
-	if MountThisVariablesLoaded == false then return end
+	--if MountThisVariablesLoaded ~= true then return end
 	if tonumber(MountThisSettings.version) == nil or tonumber(MountThisSettings.version) ~= tonumber(MountThis.version) then
 		MountThisSettings.version = MountThis.version;
 		if MountThisSettings.mountLand == nil then MountThisSettings.mountLand = MountThisSettingsDefaults.mountLand; end
@@ -335,12 +335,12 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
-	MountThis:SpellBookMountCheckboxes()
+	--MountThis:SpellBookMountCheckboxes()
 	MountThis:UpdateMounts(true);
 end
 
 function MountThis:PLAYER_ALIVE()
-	if MountThisVariablesLoaded == false then return end
+	--if MountThisVariablesLoaded ~= true then return end
 	MountThis:UpdateMounts(true);
 end
 
