@@ -319,7 +319,7 @@ function MountThis:PLAYER_REGEN_DISABLED()
 end
 function MountThis:UNIT_AURA()
 	if MountThisVariablesLoaded ~= true then return end
-	spellID = MountParser:ParseMountFromBuff()
+	local spellID = MountParser:ParseMountFromBuff()
 	--if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
 	if spellID ~= nil then MountThis:UpdateMounts() end
 end
@@ -346,6 +346,7 @@ end
 
 function MountThis:UpdateMounts(force_update, clear_mounts)
 	if clear_mounts ~= nil then MountThisSettings.Mounts = {}; end
+	local companion_index;
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
@@ -364,6 +365,7 @@ end
 
 function MountThis:ListMounts(request_short)
 	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
+	local name, data;
 	for name, data in pairs(MountThisSettings.Mounts) do
 		MountThis:Communicate("- "..name..
 			" - "..MOUNTTHIS_LIST_USE_MOUNT..": "..tostring(data.use_mount)..
@@ -492,6 +494,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
 	
 	local ZoneNames = { GetMapZones(4) } ;
+	local index, zoneName
 	for index, zoneName in pairs(ZoneNames) do 
 		if zoneName == GetZoneText() then inNorthrend = true; end 
 	end
@@ -501,10 +504,11 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	end
 
 	-- Yes, I decided to go through the whole list of mounts and do the checking that way...
-	mount_table = MountThisSettings.Mounts;
+	local mount_table = MountThisSettings.Mounts;
 	-- Create a temporary table that uses an integer index rather than dictionary
 	-- This already makes me think I should rewrite the table structures...
 	local possible_mounts = {};
+	local mount_name
 	for mount_name in pairs(mount_table) do
 		-- If we have it set to not use a mount, don't do anything else
 		if mount_table[mount_name].use_mount == true then
@@ -580,6 +584,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 
 	-- Allow the user to say they don't want the last used mount
 	if #possible_mounts > 1 and MountThisSettings.dontUseLastMount and MountThis.lastMountUsed ~= nil then
+		local poss_index, mount_index
 		for poss_index, mount_index in pairs(possible_mounts) do
 			if possible_mounts[poss_index] == MountThis.lastMountUsed then tremove(possible_mounts, poss_index) end
 		end
@@ -592,7 +597,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 end
 
 function MountThis_MountCheckButton(self, button, down)
-	ButtonNumber = strmatch(self:GetName(), "%d+")
+	local ButtonNumber = strmatch(self:GetName(), "%d+")
 	if ButtonNumber ~= nil then
 		_, MountName = GetCompanionInfo("MOUNT", ((SpellBook_GetCurrentPage()-1)*NUM_COMPANIONS_PER_PAGE)+ButtonNumber)
 		if self:GetChecked() ~= nil then
@@ -606,6 +611,7 @@ end
 function MountThis_UpdateCompanionFrame(self, event, ...)
 	--This if statement is a test to make sure we only show the checkbuttons on the mounts, not the critters
 	if SpellBook_GetCurrentPage() == nil then return end
+	local ButtonNumber
 	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
 		local MountThisButton = _G["MountThisCheckButton"..ButtonNumber]
 		MountThisButton:Hide()
@@ -636,6 +642,7 @@ SpellBookFrame:HookScript("OnHide", MountThis_UpdateCompanionFrame)
 
 
 function MountThis:SpellBookMountCheckboxes()
+	local ButtonNumber
 	for ButtonNumber = 1, NUM_COMPANIONS_PER_PAGE do
 		local frame = CreateFrame("CheckButton", "MountThisCheckButton"..ButtonNumber, _G["SpellBookCompanionButton"..ButtonNumber], "UICheckButtonTemplate")
 		frame:ClearAllPoints()
