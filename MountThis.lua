@@ -345,8 +345,10 @@ function MountThis:PLAYER_ALIVE()
 end
 
 function MountThis:UpdateMounts(force_update, clear_mounts)
+	if MountThisVariablesLoaded ~= true then return end
 	if clear_mounts ~= nil then MountThisSettings.Mounts = {}; end
 	local companion_index;
+	--if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		local current_mount = MountParser:ParseMount(companion_index)
