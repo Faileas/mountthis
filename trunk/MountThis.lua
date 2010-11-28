@@ -27,7 +27,7 @@ MountThisSettings =
 	mountLandKey = 0;
 };
 MountThisSettingsDefaults = MountThisSettings;
-MountThisVariablesLoaded = false;
+--MountThisVariablesLoaded = false;
 MountThis.lastMountUsed = nil;
 MountThis.PlayerAlive = false;
 
@@ -296,7 +296,7 @@ function MountThis:OnInitialize()
 
 	MountThis:RegisterChatCommand("mountrandom", "MountRandom");
 	MountThis:RegisterChatCommand("mount", "Mount");
-	MountThis:RegisterEvent("VARIABLES_LOADED");
+	--MountThis:RegisterEvent("ADDON_LOADED");
 	MountThis:RegisterEvent("COMPANION_LEARNED");
 	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD");
 	MountThis:RegisterEvent("PLAYER_ALIVE");
@@ -304,14 +304,15 @@ function MountThis:OnInitialize()
 	MountThis:RegisterEvent("PLAYER_REGEN_ENABLED");
 	MountThis:RegisterEvent("PLAYER_REGEN_DISABLED");
 	MountThis:SpellBookMountCheckboxes()
+	MountThisVariablesLoaded = true
 end
 
-function MountThis:VARIABLES_LOADED(addon_name)
-	if addon_name == "MountThis" then MountThisVariablesLoaded = true; end
-end
+--function MountThis:ADDON_LOADED(event, addon_name)
+--	MountThis:Communicate(addon_name)
+--	if addon_name == "MountThis" then MountThisVariablesLoaded = true; end
+--end
 
 function MountThis:COMPANION_LEARNED()
-	--if MountThisVariablesLoaded ~= true then return end
 	MountThis:UpdateMounts(true);
 end
 function MountThis:PLAYER_REGEN_ENABLED()
@@ -321,9 +322,8 @@ function MountThis:PLAYER_REGEN_DISABLED()
 	MountThis:UnregisterEvent("UNIT_AURA");
 end
 function MountThis:UNIT_AURA()
-	if MountThisVariablesLoaded ~= true then return end
+	if MountThisVariablesLoaded ~= true then return nil end
 	local spellID = MountParser:ParseMountFromBuff()
-	--if spellID ~= nil then MountParser:ParseMount(nil, spellID) end
 	if spellID ~= nil then MountThis:UpdateMounts() end
 end
 
