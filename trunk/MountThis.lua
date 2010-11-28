@@ -31,6 +31,9 @@ MountThisVariablesLoaded = false;
 MountThis.lastMountUsed = nil;
 MountThis.PlayerAlive = false;
 
+zonesNorthrend = { GetMapZones(4)} ;
+zonesOldWorld = { GetMapZones(1), GetMapZones(2) } ;
+
 local options =
 {
 	name = 'MountThis',
@@ -384,10 +387,29 @@ There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
 ]]--
 function MountThis:Flyable()
+	if MountThisVariablesLoaded ~= true then return nil end
+
 	-- IsFlyableArea does not check if the player can fly, just if the zone is flagged for flying... except Wintergrasp
-	if IsFlyableArea() or (GetRealZoneText() == MOUNTTHIS_WINTERGRASP and GetWintergraspWaitTime() ~= nil) then
-		if GetCurrentMapContinent() == 4 and GetSpellInfo(MOUNTTHIS_COLD_WEATHER_FLYING) ~= nil then return true; end
-		if GetCurrentMapContinent() == 1 or GetCurrentMapContinent() == 2 and GetSpellInfo(MOUNTTHIS_FLIGHT_MASTERS_LICENSE) ~= nil then return true; end
+	if IsFlyableArea() then
+		if GetRealZoneText() == MOUNTTHIS_WINTERGRASP and GetWintergraspWaitTime() ~= nil then return false end
+		local index, zoneName, inNorthrend
+		for index, zoneName in pairs(zonesNorthrend) do 
+			if zoneName == GetRealZoneText() then inNorthrend = true; end 
+		end
+		if inNorthrend == true then
+			if GetSpellInfo(MOUNTTHIS_COLD_WEATHER_FLYING) ~= nil then return true end
+			return false
+		end
+
+		local index, zoneName, inOldWorld
+		for index, zoneName in pairs(zonesOldWorld) do 
+			if zoneName == GetRealZoneText() then inOldWorld = true; end 
+		end
+
+		if inOldWorld == true then
+			if GetSpellInfo(MOUNTTHIS_FLIGHT_MASTERS_LICENSE) ~= nil then return true end
+			return false
+		end
 		return true;
 	end
 	return false;
@@ -422,7 +444,7 @@ function MountThis:MountRandom()
 	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
 
 	-- Try to summon a flying mount first, unless asked not to do so
-	if MountThis:Flyable() and alternateMount == nil then
+	if MountThis:Flyable() == true and alternateMount == nil then
 		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
 	end
 	if IsSwimming() == 1 or IsSwimming() == true then	-- WTF? nil/1? Why not nil/true?
