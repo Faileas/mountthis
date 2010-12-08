@@ -296,7 +296,6 @@ function MountThis:OnInitialize()
 
 	MountThis:RegisterChatCommand("mountrandom", "MountRandom");
 	MountThis:RegisterChatCommand("mount", "Mount");
-	--MountThis:RegisterEvent("ADDON_LOADED");
 	MountThis:RegisterEvent("COMPANION_LEARNED");
 	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD");
 	MountThis:RegisterEvent("PLAYER_ALIVE");
@@ -306,11 +305,6 @@ function MountThis:OnInitialize()
 	MountThis:SpellBookMountCheckboxes()
 	MountThisVariablesLoaded = true
 end
-
---function MountThis:ADDON_LOADED(event, addon_name)
---	MountThis:Communicate(addon_name)
---	if addon_name == "MountThis" then MountThisVariablesLoaded = true; end
---end
 
 function MountThis:COMPANION_LEARNED()
 	MountThis:UpdateMounts(true);
@@ -338,7 +332,6 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.unShapeshift == nil then MountThisSettings.unShapeshift = MountThisSettingsDefaults.unShapeshift; end
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
-	--MountThis:SpellBookMountCheckboxes()
 	MountThis:UpdateMounts(true);
 end
 
@@ -359,6 +352,7 @@ function MountThis:UpdateMounts(force_update, clear_mounts)
 		if MountThisSettings.Mounts[mount_name] ~= nil then
 			--MountThisSettings.Mounts[mount_name].use_mount = current_mount.use_mount;
 			if current_mount.spellID ~= nil then MountThisSettings.Mounts[mount_name].spellID = current_mount.spellID end
+			if current_mount.index ~= nil then MountThisSettings.Mounts[mount_name].index = current_mount.index end
 			if current_mount.land ~= nil then MountThisSettings.Mounts[mount_name].land = current_mount.land end
 			if current_mount.flying ~= nil then MountThisSettings.Mounts[mount_name].flying = current_mount.flying end
 			if current_mount.swimming ~= nil then MountThisSettings.Mounts[mount_name].swimming = current_mount.swimming end
@@ -598,7 +592,9 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 				if req_skill == nil then matches_requirements = false end
 			end
 
-			if matches_requirements then tinsert(possible_mounts, mount_table[mount_name].index); end
+			if matches_requirements == true then
+				tinsert(possible_mounts, mount_table[mount_name].index)
+			end
 		end
 	end
 
