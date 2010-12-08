@@ -51,7 +51,7 @@ function MountParser:ParseMount(companion_index, spellID)
 	Pre-Cata: Flying mounts typically mention "This mount can only be summoned in Outland or Northrend"
 	Swimming mounts usually explicitly state that.
 	--]]--
-	
+	local word
 	for word in string.gmatch(text, "%a+") do
 		if word == "Outland" then outland = true;
 		elseif word == "Northrend" then northrend = true;
@@ -84,7 +84,7 @@ function MountParser:ParseMount(companion_index, spellID)
 		current_mount.require_skill_level = skill_level;
 	end
 
-	passengers = string.match(text, "carry (%d+) passengers");
+	local passengers = string.match(text, "carry (%d+) passengers");
 	if passengers ~= nil then current_mount.passengers = 0 end;
 
 	-- Check for known zone restrictions
@@ -103,6 +103,7 @@ function MountParser:ParseMountFromBuff()
 	-- Build an array of mount spellIDs from the companion table
 	--local mount_ids = newtable()
 	local mount_ids = {}
+	local companion_index
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
 		tinsert(mount_ids, spellID)
@@ -113,9 +114,11 @@ function MountParser:ParseMountFromBuff()
 	local land = nil
 	local flying = nil
 	local swimming = nil
+	local i
 	for i = 1, BUFF_MAX_DISPLAY do
 		--local n,r,it,c,dt,d,et,s,is,sc,si,extra1 = UnitAura("player",i,"helpful");
 		local n,r,it,c,dt,d,et,s,is,sc,si,extra1 = UnitAura("player",i);
+		local index, spellID
 		for index, spellID in pairs(mount_ids) do
 			if spellID == si then
 				MountParserTooltip:SetUnitAura("player", i)
@@ -137,6 +140,7 @@ end
 
 function MountParser:GetCompanionIndex(mount_name)
 	if mount_name == nil then return nil end
+	local index
 	for index = 1, GetNumCompanions("MOUNT") do
 		local _,name,spellID = GetCompanionInfo("MOUNT",index);
 		if mount_name == name then return index end
