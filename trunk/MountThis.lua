@@ -315,10 +315,13 @@ end
 function MountThis:PLAYER_REGEN_DISABLED()
 	MountThis:UnregisterEvent("UNIT_AURA");
 end
-function MountThis:UNIT_AURA()
+function MountThis:UNIT_AURA(event, unitID)
 	if MountThisVariablesLoaded ~= true then return nil end
-	local spellID = MountParser:ParseMountFromBuff()
-	if spellID ~= nil then MountThis:UpdateMounts() end
+	if unitID == "player" then
+		--MountThis:Communicate("Unit Aura: "..unitID)
+		local spellID = MountParser:ParseMountFromBuff()
+		if spellID ~= nil then MountThis:UpdateMounts() end
+	end
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
@@ -333,6 +336,7 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
 	MountThis:UpdateMounts(true);
+	--MountThis:Communicate("Player Alive")
 end
 
 function MountThis:PLAYER_ALIVE()
