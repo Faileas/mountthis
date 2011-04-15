@@ -316,11 +316,11 @@ function MountThis:PLAYER_REGEN_DISABLED()
 	MountThis:UnregisterEvent("UNIT_AURA");
 end
 function MountThis:UNIT_AURA(event, unitID)
-	if MountThisVariablesLoaded ~= true then return nil end
-	if unitID == "player" then
-		--MountThis:Communicate("Unit Aura: "..unitID)
-		local spellID = MountParser:ParseMountFromBuff()
-		if spellID ~= nil then MountThis:UpdateMounts() end
+	if unitID == "player" and IsMounted() ~= nil then
+		--MountThis:Communicate("Parsing buffs for a mount")
+		if MountParser:ParseMountFromBuff() ~= nil then
+			MountThis:UpdateMounts()
+		end
 	end
 end
 
@@ -336,7 +336,6 @@ function MountThis:PLAYER_ENTERING_WORLD()
 		if MountThisSettings.dontUseLastMount == nil then MountThisSettings.dontUseLastMount = MountThisSettingsDefaults.dontUseLastMount; end
 	end
 	MountThis:UpdateMounts(true);
-	--MountThis:Communicate("Player Alive")
 end
 
 function MountThis:PLAYER_ALIVE()
@@ -385,11 +384,13 @@ There is a bug that I can't get around with Krasus' Landing.
 If you receive an error of "You can't use that here", leave the subzone and return.
 ]]--
 function MountThis:Flyable()
-	if MountThisVariablesLoaded ~= true then return nil end
-
 	-- IsFlyableArea does not check if the player can fly, just if the zone is flagged for flying... except Wintergrasp
-	if IsFlyableArea() then
-		if GetRealZoneText() == MOUNTTHIS_WINTERGRASP and GetWintergraspWaitTime() ~= nil then return false end
+	if IsFlyableArea() ~= nil then
+		if GetRealZoneText() == MOUNTTHIS_WINTERGRASP then
+			if CanQueueForWintergrasp() ~= nil then
+				if GetWintergraspWaitTime() ~= nil then return false end
+			end
+		end
 		local index, zoneName, inNorthrend
 		for index, zoneName in pairs(zonesNorthrend) do 
 			if zoneName == GetRealZoneText() then inNorthrend = true; end 
@@ -510,10 +511,10 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	local inAhnQiraj = nil
 	if GetZoneText() == "Ahn'Qiraj" then inAhnQiraj = true end
 	-- Vashj'ir is 3 zones: Kelp'thar Forest, Shimmering Expanse, Abyssal Depths
-	if GetRealZoneText() == "Vashj'ir" then inVashjir = true end
-	if GetRealZoneText() == "Kelp'thar Forest" then inVashjir = true end
-	if GetRealZoneText() == "Shimmering Expanse" then inVashjir = true end
-	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_VASHJIR then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_KELPTHAR then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_SHIMMERING_EXPANSE then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_ABYSSAL_DEPTHS then inVashjir = true end
 	
 	local ZoneNames = { GetMapZones(4) } ;
 	local index, zoneName

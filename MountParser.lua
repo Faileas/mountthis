@@ -1,11 +1,20 @@
 ﻿if (IsAddOnLoaded("LibMounts-1.0")) then MountParser = LibStub("LibMounts-1.0") end
 if MountParser == nil then MountParser = {} end
 
+local mount_ids = {}
+local companion_index
+
+function MountParser:UpdateMountIDs()
+	for companion_index = 1, GetNumCompanions("MOUNT") do
+		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
+		tinsert(mount_ids, spellID)
+	end
+end
+
 CreateFrame("GameTooltip","MountParserTooltip",UIParent,"GameTooltipTemplate");
 MountParserTooltip:Hide()
 
 function MountParser:ParseMount(companion_index, spellID)
-
 	local text = ""
 	if companion_index ~= nil then _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index); end
 	
@@ -35,7 +44,7 @@ function MountParser:ParseMount(companion_index, spellID)
 			return current_mount
 		end
 	end
-
+--MountThis:Communicate("No LibMount data for "..spellID)
 	-- No LibMount or LibMount didn't find the mount, so we do our own bastardized parsing
 	local outland, northrend, ahnqiraj, require_skill, riding_skill_based, passengers;
 	local text = GetSpellDescription(spellID);
@@ -98,17 +107,8 @@ function MountParser:ParseMount(companion_index, spellID)
 end
 
 function MountParser:ParseMountFromBuff()
-	--if not IsMounted() then return nil end
-	
-	-- Build an array of mount spellIDs from the companion table
-	--local mount_ids = newtable()
-	local mount_ids = {}
-	local companion_index
-	for companion_index = 1, GetNumCompanions("MOUNT") do
-		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
-		tinsert(mount_ids, spellID)
-	end
-
+	if not IsMounted() then return nil end
+	if mount_ids == nil then MountParser:UpdateMountIDs() end
 	GameTooltip_SetDefaultAnchor(MountParserTooltip, UIParent);
 
 	local land = nil
