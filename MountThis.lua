@@ -349,18 +349,15 @@ function MountThis:UpdateMounts(force_update, clear_mounts)
 	local companion_index;
 	--if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end
 	for companion_index = 1, GetNumCompanions("MOUNT") do
-		local _,mount_name,spellID = GetCompanionInfo("MOUNT",companion_index);
-		local current_mount = MountParser:ParseMount(companion_index)
+		local _,mount_name,spellID,_,_,abilities = GetCompanionInfo("MOUNT",companion_index);
 		-- We have the mount in the table already. Use the saved use_mount value
 		if MountThisSettings.Mounts[mount_name] ~= nil then
 			--MountThisSettings.Mounts[mount_name].use_mount = current_mount.use_mount;
-			if current_mount.spellID ~= nil then MountThisSettings.Mounts[mount_name].spellID = current_mount.spellID end
-			if current_mount.index ~= nil then MountThisSettings.Mounts[mount_name].index = current_mount.index end
-			if current_mount.land ~= nil then MountThisSettings.Mounts[mount_name].land = current_mount.land end
-			if current_mount.flying ~= nil then MountThisSettings.Mounts[mount_name].flying = current_mount.flying end
-			if current_mount.swimming ~= nil then MountThisSettings.Mounts[mount_name].swimming = current_mount.swimming end
-		else
-			MountThisSettings.Mounts[mount_name] = current_mount
+			MountThisSettings.Mounts[mount_name].spellID = spellID
+			MountThisSettings.Mounts[mount_name].index = companion_index
+			MountThisSettings.Mounts[mount_name].land = bit.band(abilities, 1) == 1
+			MountThisSettings.Mounts[mount_name].flying = bit.band(abilities, 2) == 2
+			MountThisSettings.Mounts[mount_name].swimming = bit.band(abilities, 8) == 8
 		end
 	end
 end
@@ -437,26 +434,26 @@ function MountThis:MountRandom()
 	end
 
 	local inVashjir = nil
-	if GetRealZoneText() == "Vashj'ir" then inVashjir = true end
-	if GetRealZoneText() == "Kelp'thar Forest" then inVashjir = true end
-	if GetRealZoneText() == "Shimmering Expanse" then inVashjir = true end
-	if GetRealZoneText() == "Abyssal Depths" then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_VASHJIR then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_KELPTHAR then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_SHIMMERING_EXPANSE then inVashjir = true end
+	if GetRealZoneText() == MOUNTTHIS_ABYSSAL_DEPTHS then inVashjir = true end
 
-	-- Try to summon a flying mount first, unless asked not to do so
-	if MountThis:Flyable() == true and alternateMount == nil then
-		if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
-	end
-	if IsSwimming() == 1 or IsSwimming() == true then	-- WTF? nil/1? Why not nil/true?
+	if (IsSwimming() == 1 ) then
 		if inVashjir == true then
 			if alternateMount == nil then
+				if MountThis:Mount(MountThisSettings.Mounts["Abyssal Seahorse"].index) == true then return true; end
+			else alternateMount = nil end
+		else
+			if alternateMount == nil then
 				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
-			end
-			if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
+			else alternateMount = nil end
 		end
+	end
+	if MountThis:Flyable() == true then
 		if alternateMount == nil then
-			if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
-		end
-		if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
+			if MountThis:Mount(MountThis:Random(MOUNTTHIS_FLYING)) == true then return true; end
+		else alternateMount = nil end
 	end
 	if MountThis:Mount(MountThis:Random(MOUNTTHIS_LAND)) == true then return true; end
 	return false;
@@ -545,10 +542,8 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 				matches_requirements = false
 			elseif rSwimming == true and mount_table[mount_name].swimming ~= true then 
 				matches_requirements = false
-			elseif rLand == true then
-				if mount_table[mount_name].land ~= true or mount_table[mount_name].flying == true or mount_table[mount_name].swimming == true then 
-					matches_requirements = false
-				end
+			elseif rLand == true and mount_table[mount_name].land ~= true then
+				matches_requirements = false
 			elseif rRequireSkill ~= nil and rRequireSkill ~= mount_table[mount_name].required_skill then
 				matches_requirements = false
 			elseif rRidingSkill ~= nil and rRidingSkill ~= mount_table[mount_name].riding_skill_based then
@@ -563,16 +558,16 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 				if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF: Old AQ reference"); end
 				if mount_table[mount_name].zone == nil then mount_table[mount_name].zone = MOUNTTHIS_AHNQIRAJ end
 				matches_requirements = false
-			-- update to "zone restricted" mount determination
-			elseif mount_table[mount_name].zone ~= nil then
-				if mount_table[mount_name].zone == MOUNTTHIS_AHNQIRAJ and not inAhnQiraj then
-					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Ahn'Qiraj"); end
-					matches_requirements = false
-				end
-				if mount_table[mount_name].zone == MOUNTTHIS_VASHJIR and not inVashjir then
-					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
-					matches_requirements = false
-				end
+			---- update to "zone restricted" mount determination
+			--elseif mount_table[mount_name].zone ~= nil then
+			--	if mount_table[mount_name].zone == MOUNTTHIS_AHNQIRAJ and not inAhnQiraj then
+			--		if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Ahn'Qiraj"); end
+			--		matches_requirements = false
+			--	end
+			--	if mount_table[mount_name].zone == MOUNTTHIS_VASHJIR and not inVashjir then
+			--		if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
+			--		matches_requirements = false
+			--	end
 			elseif mount_table[mount_name].required_skill ~= nil then
 				local prof1, prof2, arch = GetProfessions()
 				local req_skill = nil
