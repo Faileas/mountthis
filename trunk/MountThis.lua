@@ -443,13 +443,19 @@ function MountThis:MountRandom()
 	if (IsSwimming() == 1 ) then
 		if inVashjir == true then
 			if alternateMount == nil then
-				if IsUsableSpell(MountThisSettings.Mounts["Abyssal Seahorse"].spellID) then
+				if MountThisSettings.Mounts["Abyssal Seahorse"] ~= nil and IsUsableSpell(MountThisSettings.Mounts["Abyssal Seahorse"].spellID) then
 					if MountThis:Mount(MountThisSettings.Mounts["Abyssal Seahorse"].index) == true then return true; end
 				end
 			else alternateMount = nil end
 		else
 			if alternateMount == nil then
-				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING_ONLY)) == true then return true; end
+				if MountThisSettings.Mounts["Reins of Poseidus"] ~= nil and IsUsableSpell(MountThisSettings.Mounts["Reins of Poseidus"].spellID) then
+					if MountThis:Mount(MountThisSettings.Mounts["Reins of Poseidus"].index) == true then return true; end
+				end
+				if MountThisSettings.Mounts["Sea Turtle"] ~= nil and IsUsableSpell(MountThisSettings.Mounts["Sea Turtle"].spellID) then
+					if MountThis:Mount(MountThisSettings.Mounts["Sea Turtle"].index) == true then return true; end
+				end
+				--if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING_ONLY)) == true then return true; end
 			else alternateMount = nil end
 		end
 	end
