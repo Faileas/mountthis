@@ -367,11 +367,11 @@ function MountThis:ListMounts(request_short)
 	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
 	local name, data;
 	for name, data in pairs(MountThisSettings.Mounts) do
-		MountThis:Communicate("- "..name..
+		MountThis:Communicate(tostring(data.index).." "..name..
 			" - "..MOUNTTHIS_LIST_USE_MOUNT..": "..tostring(data.use_mount)..
 			" - "..MOUNTTHIS_LIST_FLYING..": "..tostring(data.flying)..
 			" - "..MOUNTTHIS_LIST_SWIMMING..": "..tostring(data.swimming)..
-			" - "..MOUNTTHIS_LIST_PROFESSION..": "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
+			--" - "..MOUNTTHIS_LIST_PROFESSION..": "..tostring(data.require_skill).."@"..tostring(data.require_skill_level)..
 			" - "..MOUNTTHIS_LIST_PASSENGERS..": "..tostring(data.passengers));
 	end
 	MountThis:Communicate(MOUNTTHIS_LIST_MOUNTS_STRING);
@@ -443,11 +443,13 @@ function MountThis:MountRandom()
 	if (IsSwimming() == 1 ) then
 		if inVashjir == true then
 			if alternateMount == nil then
-				if MountThis:Mount(MountThisSettings.Mounts["Abyssal Seahorse"].index) == true then return true; end
+				if IsUsableSpell(MountThisSettings.Mounts["Abyssal Seahorse"].spellID) then
+					if MountThis:Mount(MountThisSettings.Mounts["Abyssal Seahorse"].index) == true then return true; end
+				end
 			else alternateMount = nil end
 		else
 			if alternateMount == nil then
-				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING)) == true then return true; end
+				if MountThis:Mount(MountThis:Random(MOUNTTHIS_SWIMMING_ONLY)) == true then return true; end
 			else alternateMount = nil end
 		end
 	end
@@ -500,6 +502,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	local rFlying = nil
 	local rLand = nil
 	local rSwimming = nil
+	local rSwimmingOnly = nil
 	if rType == MOUNTTHIS_FLYING then rFlying = true end
 	if rType == MOUNTTHIS_LAND then rLand = true end
 	if rType == MOUNTTHIS_SWIMMING then rSwimming = true end
@@ -541,7 +544,7 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 			-- Check each of the requirements to see if they're valid for this random search
 			if IsUsableSpell(mount_table[mount_name].spellID) == nil then	-- This should fix the swimming issue
 				matches_requirements = false
-			elseif rSwimmingOnly == true and mount_table[mount_name].swimming ~= true and (mount_table[mount_name].land == true or mount_table[mount_name].flying == true) then 
+			elseif rSwimmingOnly == true and (mount_table[mount_name].swimming ~= true or mount_table[mount_name].land == true or mount_table[mount_name].flying == true) then 
 				matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
 				matches_requirements = false
@@ -564,15 +567,15 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 				if mount_table[mount_name].zone == nil then mount_table[mount_name].zone = MOUNTTHIS_AHNQIRAJ end
 				matches_requirements = false
 			---- update to "zone restricted" mount determination
-			--elseif mount_table[mount_name].zone ~= nil then
+			elseif mount_table[mount_name].zone ~= nil then
 			--	if mount_table[mount_name].zone == MOUNTTHIS_AHNQIRAJ and not inAhnQiraj then
 			--		if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Ahn'Qiraj"); end
 			--		matches_requirements = false
 			--	end
-			--	if mount_table[mount_name].zone == MOUNTTHIS_VASHJIR and not inVashjir then
-			--		if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
-			--		matches_requirements = false
-			--	end
+				if mount_table[mount_name].zone == MOUNTTHIS_VASHJIR and not inVashjir then
+					if MountThisSettings.debug >= 5 then MountThis:Communicate("WTF Vashj'ir"); end
+					matches_requirements = false
+				end
 			elseif mount_table[mount_name].required_skill ~= nil then
 				local prof1, prof2, arch = GetProfessions()
 				local req_skill = nil
