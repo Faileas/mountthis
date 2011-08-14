@@ -8,6 +8,7 @@ the new functions, even if they don't know.
 MOUNTTHIS_LAND = 0
 MOUNTTHIS_FLYING = 1
 MOUNTTHIS_SWIMMING = 2
+MOUNTTHIS_SWIMMING_ONLY = 3
 
 MountThis = LibStub("AceAddon-3.0"):NewAddon("MountThis", "AceConsole-3.0", "AceComm-3.0", "AceEvent-3.0");
 -- svn:keywords Revision needs to be set, but not easy with TortoiseSVN on Windows
@@ -502,6 +503,8 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 	if rType == MOUNTTHIS_FLYING then rFlying = true end
 	if rType == MOUNTTHIS_LAND then rLand = true end
 	if rType == MOUNTTHIS_SWIMMING then rSwimming = true end
+	if rType == MOUNTTHIS_SWIMMING_ONLY then rSwimmingOnly = true end
+
 	local canFlyInNorthrend = false
 	local inNorthrend = false;
 	-- TODO: Get this section tested. I'm pretty sure AQ mounts are not functioning
@@ -537,6 +540,8 @@ function MountThis:Random(rType, rRequireSkill, rRidingSkill, rPassengers)
 
 			-- Check each of the requirements to see if they're valid for this random search
 			if IsUsableSpell(mount_table[mount_name].spellID) == nil then	-- This should fix the swimming issue
+				matches_requirements = false
+			elseif rSwimmingOnly == true and mount_table[mount_name].swimming ~= true and (mount_table[mount_name].land == true or mount_table[mount_name].flying == true) then 
 				matches_requirements = false
 			elseif rFlying == true and mount_table[mount_name].flying ~= true then 
 				matches_requirements = false
