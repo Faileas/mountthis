@@ -345,21 +345,20 @@ function MountThis:PLAYER_ALIVE()
 end
 
 function MountThis:UpdateMounts(force_update, clear_mounts)
-	if MountThisVariablesLoaded ~= true then return end
 	if clear_mounts ~= nil then MountThisSettings.Mounts = {}; end
 	local companion_index;
-	--if type(MountThisSettings.Mounts) ~= "table" then MountThisSettings.Mounts = {} end
 	for companion_index = 1, GetNumCompanions("MOUNT") do
 		local _,mount_name,spellID,_,_,abilities = GetCompanionInfo("MOUNT",companion_index);
-		-- We have the mount in the table already. Use the saved use_mount value
-		if MountThisSettings.Mounts[mount_name] ~= nil then
-			--MountThisSettings.Mounts[mount_name].use_mount = current_mount.use_mount;
-			MountThisSettings.Mounts[mount_name].spellID = spellID
-			MountThisSettings.Mounts[mount_name].index = companion_index
-			MountThisSettings.Mounts[mount_name].land = bit.band(abilities, 1) == 1
-			MountThisSettings.Mounts[mount_name].flying = bit.band(abilities, 2) == 2
-			MountThisSettings.Mounts[mount_name].swimming = bit.band(abilities, 8) == 8
+		-- If the mount "doesn't exist" in our table, create the entry and set the mount to be used
+		if MountThisSettings.Mounts[mount_name] == nil then
+			MountThisSettings.Mounts[mount_name] = {}
+			MountThisSettings.Mounts[mount_name].use_mount = true;
 		end
+		MountThisSettings.Mounts[mount_name].spellID = spellID
+		MountThisSettings.Mounts[mount_name].index = companion_index
+		MountThisSettings.Mounts[mount_name].land = bit.band(abilities, 1) == 1
+		MountThisSettings.Mounts[mount_name].flying = bit.band(abilities, 2) == 2
+		MountThisSettings.Mounts[mount_name].swimming = bit.band(abilities, 8) == 8
 	end
 end
 
