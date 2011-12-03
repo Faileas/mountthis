@@ -300,29 +300,12 @@ function MountThis:OnInitialize()
 	MountThis:RegisterEvent("COMPANION_LEARNED");
 	MountThis:RegisterEvent("PLAYER_ENTERING_WORLD");
 	MountThis:RegisterEvent("PLAYER_ALIVE");
-	MountThis:RegisterEvent("UNIT_AURA");
-	MountThis:RegisterEvent("PLAYER_REGEN_ENABLED");
-	MountThis:RegisterEvent("PLAYER_REGEN_DISABLED");
 	MountThis:SpellBookMountCheckboxes()
 	MountThisVariablesLoaded = true
 end
 
 function MountThis:COMPANION_LEARNED()
 	MountThis:UpdateMounts(true);
-end
-function MountThis:PLAYER_REGEN_ENABLED()
-	MountThis:RegisterEvent("UNIT_AURA");
-end
-function MountThis:PLAYER_REGEN_DISABLED()
-	MountThis:UnregisterEvent("UNIT_AURA");
-end
-function MountThis:UNIT_AURA(event, unitID)
-	if unitID == "player" and IsMounted() ~= nil then
-		--MountThis:Communicate("Parsing buffs for a mount")
-		if MountParser:ParseMountFromBuff() ~= nil then
-			MountThis:UpdateMounts()
-		end
-	end
 end
 
 function MountThis:PLAYER_ENTERING_WORLD()
@@ -340,7 +323,6 @@ function MountThis:PLAYER_ENTERING_WORLD()
 end
 
 function MountThis:PLAYER_ALIVE()
-	--if MountThisVariablesLoaded ~= true then return end
 	MountThis:UpdateMounts(true);
 end
 
@@ -384,9 +366,8 @@ function MountThis:Flyable()
 	-- IsFlyableArea does not check if the player can fly, just if the zone is flagged for flying... except Wintergrasp
 	if IsFlyableArea() ~= nil then
 		if GetRealZoneText() == MOUNTTHIS_WINTERGRASP then
-			if CanQueueForWintergrasp() ~= nil then
-				if GetWintergraspWaitTime() ~= nil then return false end
-			end
+			pvpID, localizedName, isActive, canQueue, waitTime, canEnter = GetWorldPVPAreaInfo(1)
+			if isActive ~= false then return false end
 		end
 		local index, zoneName, inNorthrend
 		for index, zoneName in pairs(zonesNorthrend) do 
